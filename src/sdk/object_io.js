@@ -213,7 +213,9 @@ class ObjectIO {
         );
         try {
             dbg.log0('upload_object: start upload', create_params);
+            params.tl.timestamp("enter ObjectIO.upload_object");
             const create_reply = await params.client.object.create_object_upload(create_params);
+            params.tl.timestamp("ObjectIO.upload_object create_object_upload");
             params.obj_id = create_reply.obj_id;
             params.tier_id = create_reply.tier_id;
             params.bucket_id = create_reply.bucket_id;
@@ -228,6 +230,7 @@ class ObjectIO {
             }
 
             dbg.log0('upload_object: complete upload', complete_params);
+            params.tl.timestamp("ObjectIO.upload_object complete");
 
             if (params.async_get_last_modified_time) {
                 complete_params.last_modified_time = await params.async_get_last_modified_time();
@@ -237,6 +240,7 @@ class ObjectIO {
             if (params.copy_source) {
                 complete_result.copy_source = params.copy_source;
             }
+            params.tl.timestamp("return ObjectIO.upload_object");
             return complete_result;
         } catch (err) {
             dbg.warn('upload_object: failed upload', complete_params, err);

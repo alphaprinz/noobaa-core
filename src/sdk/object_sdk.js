@@ -687,12 +687,15 @@ class ObjectSDK {
     }
 
     async upload_object(params) {
+        params.tl.timestamp("enter ObjectSDK.upload_object");
         return this._call_op_and_update_stats({
             op_name: 'upload_object',
             op_func: async () => {
                 const ns = await this._get_bucket_namespace(params.bucket);
+                params.tl.timestamp("ObjectSDK.upload_object got ns");
                 this._check_is_readonly_namespace(ns);
                 if (params.copy_source) await this.fix_copy_source_params(params, ns);
+                params.tl.timestamp("ObjectSDK.upload_object copy source");
                 return ns.upload_object(params, this);
             },
             on_success: () => {
@@ -701,6 +704,7 @@ class ObjectSDK {
                     key: params.key,
                     content_type: params.content_type
                 });
+                params.tl.timestamp("ObjectSDK.upload_object success")
             },
         });
     }

@@ -5,6 +5,7 @@ const dbg = require('../../../util/debug_module')(__filename);
 const s3_utils = require('../s3_utils');
 const S3Error = require('../s3_errors').S3Error;
 const http_utils = require('../../../util/http_utils');
+const newTimeline = require('../../../util/timeline');
 const mime = require('mime');
 const config = require('../../../../config');
 
@@ -17,6 +18,7 @@ const s3_error_options = {
  * http://docs.aws.amazon.com/AmazonS3/latest/API/RESTObjectCOPY.html
  */
 async function put_object(req, res) {
+    const tl = newTimeline('PUT OBJECT ' + req.params.bucket + '/' + req.params.key);
     const encryption = s3_utils.parse_encryption(req);
     const copy_source = s3_utils.parse_copy_source(req);
     const tagging = s3_utils.parse_tagging_header(req);
@@ -32,6 +34,7 @@ async function put_object(req, res) {
         req.headers['x-amz-copy-source'] || '', encryption || '');
 
     const source_stream = req.chunked_content ? s3_utils.decode_chunked_upload(req) : req;
+    tl.timestamp("call ObjectSDK.upload_object");
     const reply = await req.object_sdk.upload_object({
         bucket: req.params.bucket,
         key: req.params.key,
@@ -50,7 +53,8 @@ async function put_object(req, res) {
         tagging_copy: s3_utils.is_copy_tagging_directive(req),
         encryption,
         lock_settings,
-        azure_invalid_md_header: req.headers['azure-metadata-handling'] || undefined
+        azure_invalid_md_header: req.headers['azure-metadata-handling'] || undefined,
+        tl
     });
 
     if (reply.version_id && reply.version_id !== 'null') {
@@ -71,6 +75,7 @@ async function put_object(req, res) {
         };
     }
     res.setHeader('ETag', `"${reply.etag}"`);
+    tl.report();
 }
 
 
