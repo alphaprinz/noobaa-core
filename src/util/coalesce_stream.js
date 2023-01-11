@@ -15,6 +15,8 @@ class CoalesceStream extends stream.Transform {
 
     constructor(options) {
         super(options);
+        options.timeline.timestamp("CoalesceStream ctor");
+        this.timeline = options.timeline;
         this.object_mode = options.objectMode;
         this.max_length = options.max_length;
         this.max_wait_ms = options.max_wait_ms || 0;
@@ -34,6 +36,7 @@ class CoalesceStream extends stream.Transform {
         } else if (!this.timeout) {
             this.timeout = setTimeout(() => this._flush(), this.max_wait_ms);
         }
+        //this.timeline.timestamp("CoalesceStream transformed");
         return callback();
     }
 
@@ -54,6 +57,7 @@ class CoalesceStream extends stream.Transform {
             this.total_length = 0;
         }
 
+        this.timeline.timestamp("CoalesceStream flushed");
         if (callback) {
             return callback();
         }

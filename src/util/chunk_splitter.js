@@ -15,12 +15,14 @@ const nb_native = require('./nb_native');
  */
 class ChunkSplitter extends stream.Transform {
 
-    constructor({ watermark, chunk_split_config: { avg_chunk, delta_chunk }, calc_md5, calc_sha256 }) {
+    constructor({ watermark, chunk_split_config: { avg_chunk, delta_chunk }, timeline, calc_md5, calc_sha256 }) {
         super({
             objectMode: true,
             allowHalfOpen: false,
             highWaterMark: watermark,
         });
+        timeline.timestamp("ChunkSplitter ctor");
+        this.timeline = timeline;
         this.split_batch = avg_chunk;
         this.state = {
             min_chunk: avg_chunk - delta_chunk,
@@ -40,6 +42,7 @@ class ChunkSplitter extends stream.Transform {
     _transform(buf, encoding, callback) {
         try {
             this.split(buf, callback);
+            //this.timeline.timestamp("ChunkSplitter transformed");
         } catch (err) {
             return callback(err);
         }
@@ -53,6 +56,7 @@ class ChunkSplitter extends stream.Transform {
                     const res = nb_native().chunk_splitter(this.state);
                     this.md5 = res.md5;
                     this.sha256 = res.sha256;
+                    this.timeline.timestamp("ChunkSplitter flushed");
                     return callback();
                 } catch (err2) {
                     return callback(err2);
