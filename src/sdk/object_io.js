@@ -429,7 +429,7 @@ class ObjectIO {
             transform: (chunks, encoding, callback) =>
                 {
                     this._upload_chunks(params, complete_params, chunks, callback);
-                    //params.tl.timestamp("uploader Transformed");
+                    params.tl.timestamp("uploader Transformed");
                 }
         });
         uploader.on('error', err1 => dbg.error('object_io._upload_stream_internal: error occured on stream Uploader: ', err1));

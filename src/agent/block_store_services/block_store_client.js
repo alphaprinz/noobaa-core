@@ -307,7 +307,8 @@ class BlockStoreClient {
                     _.omit(s3_params, 'secretAccessKey'));
                 const s3 = new AWS.S3(s3_params);
                 write_params.Body = data;
-                await s3.putObject(write_params).promise();
+                P.delay(1);
+                //await s3.putObject(write_params).promise();
                 const data_length = data.length;
                 const usage = data_length ? {
                     size: (block_md.is_preallocated ? 0 : data_length) + encoded_md.length,
