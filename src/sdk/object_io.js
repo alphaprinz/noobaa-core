@@ -463,6 +463,7 @@ class ObjectIO {
      */
     async _upload_chunks(params, complete_params, chunks, callback) {
         try {
+            params.tl.timestamp("ObjectIO _upload_chunks enter");
             const is_using_encryption = params.encryption || (params.copy_source && params.copy_source.encryption);
             params.range = {
                 start: params.start,
@@ -506,7 +507,6 @@ class ObjectIO {
 
                 return chunk;
             });
-
             /** 
              * passing partial object info we have in this context which will be sent to block_stores
              * as block_md.mapping_info so it can be used for recovery in case the db is not available.
@@ -517,7 +517,7 @@ class ObjectIO {
                 bucket: params.bucket,
                 key: params.key,
             };
-
+            params.tl.timestamp("ObjectIO _upload_chunks chunks mapped");
             const mc = new MapClient({
                 object_md,
                 chunks: map_chunks,
@@ -525,9 +525,11 @@ class ObjectIO {
                 check_dups: !is_using_encryption,
                 rpc_client: params.client,
                 desc: params.desc,
+                tl: params.tl,
                 report_error: (block_md, action, err) => this._report_error_on_object_upload(params, block_md, action, err),
             });
             await mc.run();
+            params.tl.timestamp("ObjectIO _upload_chunks MapClient run complete");
             if (mc.had_errors) throw new Error('Upload map errors');
             if (params.upload_chunks_hook) params.upload_chunks_hook(params.range.end - params.range.start);
             return callback();

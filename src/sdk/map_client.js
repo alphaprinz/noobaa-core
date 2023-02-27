@@ -80,6 +80,7 @@ class MapClient {
 
     /**
      * @param {Object} props
+     * @param {Object} [props.tl]
      * @param {nb.Chunk[]} [props.chunks]
      * @param {Partial<nb.ObjectInfo>} [props.object_md]
      * @param {number} [props.read_start]
@@ -101,6 +102,7 @@ class MapClient {
         this.move_to_tier = props.move_to_tier;
         this.check_dups = Boolean(props.check_dups);
         this.rpc_client = props.rpc_client;
+        this.tl = props.tl;
         this.desc = props.desc;
         this.report_error = props.report_error;
         this.had_errors = false;
@@ -109,10 +111,14 @@ class MapClient {
     }
 
     async run() {
+        this.tl.timestamp('MapClient run enter');
         const chunks = await this.get_mapping();
+        this.tl.timestamp('MapClient get_mapping complete');
         this.chunks = chunks;
         await this.process_mapping();
+        this.tl.timestamp('MapClient process_mapping complete');
         await this.put_mapping();
+        this.tl.timestamp('MapClient put_mapping complete');
     }
 
     /**
