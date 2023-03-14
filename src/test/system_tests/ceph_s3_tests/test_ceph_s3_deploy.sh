@@ -24,6 +24,11 @@ if [ ! -d $DIRECTORY ]; then
     cd ${DIRECTORY}
     git checkout ${CEPH_TESTS_VERSION}
     echo "Finished Downloading Ceph S3 Tests"
+
+    echo "Manually fixing s3select tests"
+    sed -i '14 i from . import get_new_bucket_name' ./s3tests_boto3/functional/test_s3select.py
+    sed -i 's/bucket_name = \"test\"/bucket_name = get_new_bucket_name()/g' ./s3tests_boto3/functional/test_s3select.py
+
 fi
 
 commit_epoch=$(git show -s --format=%ci ${CEPH_TESTS_VERSION} | awk '{print $1}')

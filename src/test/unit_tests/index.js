@@ -34,6 +34,7 @@ require('./test_sensitive_wrapper');
 // require('./test_debug_module');
 require('./test_range_stream');
 require('./test_buffer_pool');
+require('./test_s3select');
 
 // // STORES
 require('./test_md_store');
