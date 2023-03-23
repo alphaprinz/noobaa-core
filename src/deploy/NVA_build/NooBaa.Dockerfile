@@ -75,6 +75,10 @@ RUN dnf install -y -q bash \
     xz && \
     dnf clean all
 
+COPY ./src/deploy/NVA_build/install_arrow.sh ./src/deploy/NVA_build/install_arrow.sh
+RUN ./src/deploy/NVA_build/install_arrow.sh
+RUN dnf install -y -q arrow-devel parquet-devel
+
 RUN mkdir -p /usr/local/lib/python3.6/site-packages
 
 ##############################################################

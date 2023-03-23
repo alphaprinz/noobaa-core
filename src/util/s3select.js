@@ -82,7 +82,7 @@ class S3SelectStream extends Transform {
     /**
          * @param {{
     *     query: string;
-    *     input_format: 'CSV' | 'JSON';
+    *     input_format: 'CSV' | 'JSON | Parquet';
     *     input_serialization_format: {
     *        FieldDelimiter: string;
     *        RecordDelimiter: string;
@@ -191,6 +191,19 @@ class S3SelectStream extends Transform {
             dbg.error(err);
             return cb(err);
         }
+    }
+
+    async select_parquet(select_args) {
+        //TODO - stats, try/catch
+        dbg.log0("select_parq start");
+        await this.s3select.select_parquet_start(select_args);
+        dbg.log0("select_parq start after");
+        for await (const select_result of this.s3select.select_parquet()) {
+            this.handle_result(select_result);
+        }
+        //TODO - duplication with flush
+        this.push(S3SelectStream.end_message);
+        this.push(null);
     }
 }
 

@@ -11,7 +11,9 @@ LABEL maintainer="Liran Mauda (lmauda@redhat.com)"
 #     dnf clean all
 RUN dnf update -y -q --nobest && \
     dnf clean all
-RUN dnf install -y -q wget unzip which vim python2 python3 boost-devel && \
+COPY ./src/deploy/NVA_build/install_arrow.sh ./src/deploy/NVA_build/install_arrow.sh
+RUN ./src/deploy/NVA_build/install_arrow.sh
+RUN dnf install -y -q wget unzip which vim python2 python3 boost-devel arrow-devel parquet-devel && \
     dnf group install -y -q "Development Tools" && \
     dnf clean all
 RUN alternatives --set python /usr/bin/python3
