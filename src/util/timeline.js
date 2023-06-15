@@ -29,10 +29,18 @@ function newTimeline(name) {
             const start = this.line[0].ts;
             const end = this.line[this.line.length - 1].ts;
             const took = end - start;
-            const normalize_by_start = (e) => ({name: e.name, ts: e.ts - start});
+            //const normalize_by_start = (e) => ({name: e.name, ts: e.ts - start});
+            //console.log("this.line = ", this.line);
+            //console.log("len = ", this.line.length);
+            for (let i = this.line.length - 1; i > 0; --i) {
+                //console.log("i = ", i);
+                //console.log("this.line[i] = ", this.line[i]);
+                this.line[i].ts -= this.line[i-1].ts;
+            }
+            this.line[0].ts = 0;
             const out_obj = {
                 name: this.name,
-                line: this.line.map(normalize_by_start)
+                line: this.line//.map(normalize_by_start)
             };
             console.log("Timeline", this.name, "took", took, "JSON", JSON.stringify(out_obj, replacer));
         },
