@@ -75,7 +75,7 @@ async function put_object(req, res) {
         };
     }
     res.setHeader('ETag', `"${reply.etag}"`);
-    tl.report();
+    //tl.report();
 }
 
 

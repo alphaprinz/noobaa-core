@@ -36,6 +36,7 @@ const { IoStatsStore } = require('../analytic_services/io_stats_store');
 const { ChunkAPI } = require('../../sdk/map_api_types');
 const config = require('../../../config');
 const Quota = require('../system_services/objects/quota');
+const newTimeline = require('../../util/timeline');
 
 // short living cache for objects
 // the purpose is to reduce hitting the DB many many times per second during upload/download.
@@ -362,6 +363,12 @@ const ZERO_SIZE_ETAG = crypto.createHash('md5').digest('hex');
  *
  */
 async function complete_object_upload(req) {
+
+
+    const tl = newTimeline("complete_object_upload objid = " + req.obj_id + ", key = " + req.key);
+    //dbg.log0("object server complete_object_upload");
+    tl.timestamp("complete_object_upload start");
+
     throw_if_maintenance(req);
     const set_updates = {};
     const unset_updates = {
@@ -379,6 +386,7 @@ async function complete_object_upload(req) {
                         })`);
         }
     }
+    tl.timestamp("complete_object_upload find_cached_object_upload");
     if (req.rpc_params.md5_b64 && req.rpc_params.md5_b64 !== obj.md5_b64) {
         if (obj.md5_b64) {
             throw new RpcError('BAD_DIGEST_MD5',
@@ -402,7 +410,9 @@ async function complete_object_upload(req) {
 
     const map_res = req.rpc_params.multiparts ?
         await _complete_object_multiparts(obj, req.rpc_params.multiparts) :
-        await _complete_object_parts(obj);
+        await _complete_object_parts(obj, tl);
+
+    tl.timestamp("complete_object_upload parts");    
 
     if (req.rpc_params.size !== map_res.size) {
         if (req.rpc_params.size >= 0) {
@@ -426,6 +436,8 @@ async function complete_object_upload(req) {
         set_updates.etag = Buffer.from(req.rpc_params.md5_b64, 'base64').toString('hex');
     }
 
+    tl.timestamp("complete_object_upload etag");
+
     set_updates.create_time = new Date();
     if (req.bucket.namespace && req.bucket.namespace.caching) {
         set_updates.cache_last_valid_time = new Date();
@@ -435,11 +447,15 @@ async function complete_object_upload(req) {
         set_updates.version_enabled = true;
     }
 
+    tl.timestamp("complete_object_upload version seq");
+
     if (req.rpc_params.last_modified_time) {
         set_updates.last_modified_time = new Date(req.rpc_params.last_modified_time);
     }
 
     await _put_object_handle_latest({ req, put_obj: obj, set_updates, unset_updates });
+
+    tl.timestamp("complete_object_upload put obj handle");
 
     const took_ms = set_updates.create_time.getTime() - obj._id.getTimestamp().getTime();
     const upload_duration = time_utils.format_time_duration(took_ms);
@@ -456,13 +472,19 @@ async function complete_object_upload(req) {
             `\nUpload duration: ${upload_duration}.` +
             `\nUpload speed: ${upload_speed}/sec.`,
     });
-    return {
+
+    tl.timestamp("complete_object_upload prep res");
+
+    const res = {
         etag: get_etag(obj, set_updates),
         version_id: MDStore.instance().get_object_version_id(set_updates),
         encryption: obj.encryption,
         size: set_updates.size,
         content_type: obj.content_type,
     };
+
+    tl.report();
+    return res;
 }
 
 
@@ -1967,7 +1989,9 @@ async function update_endpoint_stats(req) {
 /**
  * @param {nb.ObjectMD} obj
  */
-async function _complete_object_parts(obj) {
+async function _complete_object_parts(obj, tl) {
+    tl.timestamp("_complete_object_parts begin");
+
     const context = {
         pos: 0,
         seq: 0,
@@ -1976,10 +2000,15 @@ async function _complete_object_parts(obj) {
     };
 
     const parts = await MDStore.instance().find_all_parts_of_object(obj);
+    tl.timestamp("_complete_object_parts find all parts");
+
     _complete_next_parts(parts, context);
+    tl.timestamp("_complete_object_parts complete next");
     if (context.parts_updates.length) {
         await MDStore.instance().update_parts_in_bulk(context.parts_updates);
     }
+
+    tl.timestamp("_complete_object_parts return");
 
     return {
         size: context.pos,
