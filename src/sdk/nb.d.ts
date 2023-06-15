@@ -712,7 +712,7 @@ interface DBSequence {
 }
 
 interface DBCollection {
-    find(query?: object, options?: object): Promise<DBDoc[]>;
+    find(query?: object, options?: object, name?: string, values?: object[]): Promise<DBDoc[]>;
     findOne(query?: object, options?: object): Promise<DBDoc>;
     findOneAndUpdate(query: object, update: object, options?: object): Promise<DBDoc>;
     deleteOne(query: object, options?: object): Promise<object>;

@@ -1199,12 +1199,14 @@ class MDStore {
      */
     async find_all_parts_of_object(obj) {
         return this._parts.find({ obj: { $eq: obj._id, $exists: true }, deleted: null });
+        //return this._parts.find({ obj: { $eq: '$1', $exists: true }, deleted: null }, {}, "find_all_parts_of_object", [obj._id.toString()]);
     }
 
     update_parts_in_bulk(parts_updates) {
         const bulk = this._parts.initializeUnorderedBulkOp();
         for (const update of parts_updates) {
             bulk.find({ _id: update._id })
+            //bulk.find({ _id: '$1' }, {}, "update_parts_in_bulk", [update._id])
                 .updateOne(compact_updates(update.set_updates, update.unset_updates));
         }
         return bulk.length ? bulk.execute() : P.resolve();

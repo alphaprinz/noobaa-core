@@ -191,7 +191,7 @@ async function log_query(pg_client, query, tag, millitook, should_explain) {
         stack: (new Error()).stack.split('\n').slice(1),
     };
 
-    if (should_explain && process.env.PG_EXPLAIN_QUERIES === 'true') {
+    if (should_explain /*&& process.env.PG_EXPLAIN_QUERIES === 'true'*/) {
         let explain_res;
         const explain_q = { text: 'explain ' + query.text, values: query.values };
         try {
@@ -250,9 +250,11 @@ async function _do_query(pg_client, q, transaction_counter) {
         const milliend = time_utils.millistamp();
         const millitook = milliend - millistart;
         if (process.env.PG_ENABLE_QUERY_LOG === 'true' || millitook > config.LONG_DB_QUERY_THRESHOLD) {
+        //if(millitook > 50){
             // noticed that some failures in explain are invalidating the transaction. 
             // myabe did something wrong but for now don't try to EXPLAIN the query when in transaction. 
-            await log_query(pg_client, q, tag, millitook, /*should_explain*/ transaction_counter === 0);
+            //await log_query(pg_client, q, tag, millitook, /*should_explain*/ transaction_counter === 0);
+            await log_query(pg_client, q, tag, millitook, /*should_explain*/ true);
         }
         return res;
     } catch (err) {
@@ -672,9 +674,9 @@ class PostgresTable {
     }
 
     // for simple queries pass client to use client.query
-    async single_query(text, values, client, skip_init) {
+    async single_query(text, values, client, skip_init, name) {
         if (!skip_init) await this.init_promise;
-        const q = { text, values };
+        const q = { text, values, name };
         return _do_query(client || this.client.pool, q, 0);
     }
 
@@ -817,7 +819,7 @@ class PostgresTable {
         }
     }
 
-    async find(query, options = {}) {
+    async find(query, options = {}, name = undefined, values = undefined){
 
         function isObject(v) {
             return (typeof v === 'object' && !Array.isArray(v) && v !== null);
@@ -864,8 +866,18 @@ class PostgresTable {
         if (sql_query.offset) {
             query_string += ` OFFSET ${sql_query.offset}`;
         }
+        dbg.log("find query q = ", query_string);
+        /*dbg.log("typeof name=", typeof q.name, ", ==string=", typeof q.name == 'string');
+        dbg.log("typeof text=", typeof q.text, ", ==string=", typeof q.text == 'string');*/
+        /*let values = undefined;
+        if(name){
+            query_string = query_string.replace(/\'obj\'=\'[0-9a-f]*\'/, '\'obj\'=$1')
+            values = [query.obj.$eq.toString()];
+
+            //dbg.log("new qs = ", query_string, ",values = ", values);
+        }*/
         try {
-            const res = await this.single_query(query_string);
+            const res = await this.single_query(query_string, values, undefined, undefined, name);
             return res.rows.map(row => decode_json(this.schema, row.data));
         } catch (err) {
             dbg.error('find failed', query, options, query_string, err);
@@ -1409,6 +1421,8 @@ class PostgresClient extends EventEmitter {
             port: postgres_port,
             ...params,
         };
+
+        dbg.log("new_pool_params = ", this.new_pool_params);
 
         PostgresClient.implements_interface(this);
         this._ajv = new Ajv({ verbose: true, allErrors: true });
