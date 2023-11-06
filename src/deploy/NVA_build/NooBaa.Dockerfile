@@ -158,6 +158,8 @@ ENV LD_PRELOAD /usr/lib64/libjemalloc.so.2
 #RUN mkdir -p /nsfs/fs1/amitpb && chmod -R 777 /nsfs/
 #RUN mkdir -p /nsfsAA/fs1/amitpb && chmod -R 777 /nsfsAA/
 
+RUN chmod 777 /var/log/messages
+
 ###############
 # EXEC SETUP #
 ###############

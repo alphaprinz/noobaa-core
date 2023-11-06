@@ -3,6 +3,8 @@
 
 const dbg = require('../../util/debug_module')(__filename);
 const http_utils = require('../../util/http_utils');
+const dgram = require('node:dgram');
+const { Buffer } = require('node:buffer');
 
 
 async function send_bucket_op_logs(req, res) {
@@ -33,6 +35,18 @@ function endpoint_bucket_op_logs(op_name, req, res, source_bucket) {
     // 2 - Format it and send it to log bucket/syslog.
     const s3_log = get_bucket_log_record(op_name, source_bucket, req, res);
     dbg.log1("Bucket operation logs = ", s3_log);
+
+    const buffer = Buffer.from(JSON.stringify(s3_log));
+    const client = dgram.createSocket('udp4');
+    //const client = dgram.createSocket(req.object_sdk.rpc_client.rpc.router.syslog);
+    const url = new URL(req.object_sdk.rpc_client.rpc.router.syslog);
+    //client.send(buffer, 514, 'noobaa-syslog.noobaa.svc', (err) => {
+    client.send(buffer, parseInt(url.port), url.hostname, (err) => {
+        if (err) {
+            dbg.log0("failed to send udp err = ", err);
+        }
+        client.close();
+    });
 
 }
 
