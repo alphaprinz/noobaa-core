@@ -32,6 +32,7 @@ const DIAGNOSE_ACTIONS = {
 
 const CONFIG_SUBDIRS = {
     ACCOUNTS: 'accounts',
+    ROOT_ACCOUNTS: 'root_accounts',
     BUCKETS: 'buckets',
     ACCESS_KEYS: 'access_keys'
 };
