@@ -1346,7 +1346,7 @@ describe('manage nsfs cli account flow', () => {
             await fs_utils.file_must_exist(new_buckets_path);
             await set_path_permissions_and_owner(account_options.new_buckets_path, account_options, 0o700);
             await exec_manage_cli(type, action, account_options);
-            const config_path = path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name + '.json');
+            const config_path = path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name + '.symlink');
             await fs_utils.file_must_exist(config_path);
         });
 
@@ -1430,7 +1430,7 @@ describe('manage nsfs cli account flow', () => {
             const account_options = { config_root, name };
             const res = await exec_manage_cli(type, action, account_options);
             expect(JSON.parse(res.stdout).error.code).toBe(ManageCLIError.AccountDeleteForbiddenHasBuckets.code);
-            config_path = path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name + '.json');
+            config_path = path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name + '.symlink');
             await fs_utils.file_must_exist(config_path);
         });
 
@@ -1890,7 +1890,6 @@ describe('cli account flow distinguished_name - permissions', function() {
             user: accounts.accessible_user.fs_options.distinguished_name,
         };
         const res = await exec_manage_cli(type, action, update_options);
-        console.log("RES = ", res);
         assert_account(JSON.parse(res).response.reply, { ...accounts.root.cli_options, ...update_options }, false);
     }, timeout);
 
@@ -2008,7 +2007,6 @@ async function exec_manage_cli(type, action, options) {
     } catch (e) {
         res = e;
     }
-    //console.log('res = ', res);
     return res;
 }
 
