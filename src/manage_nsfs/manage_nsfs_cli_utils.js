@@ -113,7 +113,7 @@ async function get_config_data_if_exists(config_root_backend, config_file_path, 
  * @param {string} bucket_owner
  */
 async function get_bucket_owner_account(global_config, bucket_owner) {
-    const account_config_path = get_config_file_path(global_config.accounts_dir_path, bucket_owner);
+    const account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, bucket_owner);
     try {
         const account = await get_config_data(global_config.config_root_backend, account_config_path);
         return account;
