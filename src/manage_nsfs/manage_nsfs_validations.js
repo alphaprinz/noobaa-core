@@ -345,8 +345,7 @@ async function validate_bucket_args(global_config, data, action) {
                 const detail_msg = `${data.bucket_owner} account not allowed to create new buckets. ` +
                 `Please make sure to have a valid new_buckets_path and enable the flag allow_bucket_creation`;
                 throw_cli_error(ManageCLIError.BucketCreationNotAllowed, detail_msg);
-        }
-            data.owner_account = account._id; // TODO move this assignment to better place
+            }
         }
         if (account.owner) {
             const detail_msg = `account ${data.bucket_owner} is IAM account`;

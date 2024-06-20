@@ -36,6 +36,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
         super({ fs_root: ''});
         this.fs_root = '';
         this.accounts_dir = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS);
+        this.root_accounts_dir = path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS);
         this.access_keys_dir = path.join(config_root, CONFIG_SUBDIRS.ACCESS_KEYS);
         this.bucket_schema_dir = path.join(config_root, CONFIG_SUBDIRS.BUCKETS);
         this.config_root = config_root;
@@ -70,7 +71,11 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
     }
 
     _get_root_account_config_path(name) {
-        return path.join(this.accounts_dir, name + '.symlink');
+        return path.join(this.root_accounts_dir, name + '.symlink');
+    }
+
+    _get_account_config_path(id) {
+        return path.join(this.accounts_dir, id + '.json');
     }
 
     _get_access_keys_config_path(access_key) {
@@ -85,6 +90,26 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
         } catch (err) {
             return false;
         }
+    }
+
+    async _get_account_by_id(id) {
+        const account_config_path = this._get_account_config_path(id);
+        try {
+            await nb_native().fs.stat(this.fs_context, account_config_path);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    _translate_bucket_error_codes(err) {
+        if (err.rpc_code) return err;
+        if (err.code === 'ENOENT') err.rpc_code = 'NO_SUCH_BUCKET';
+        if (err.code === 'EEXIST') err.rpc_code = 'BUCKET_ALREADY_EXISTS';
+        if (err.code === 'EPERM' || err.code === 'EACCES') err.rpc_code = 'UNAUTHORIZED';
+        if (err.code === 'IO_STREAM_ITEM_TIMEOUT') err.rpc_code = 'IO_STREAM_ITEM_TIMEOUT';
+        if (err.code === 'INTERNAL_ERROR') err.rpc_code = 'INTERNAL_ERROR';
+        return err;
     }
 
     async read_account_by_access_key({ access_key }) {
@@ -643,7 +668,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             bucket_to_validate);
             nsfs_schema_utils.validate_bucket_schema(bucket_to_validate);
             await bucket_policy_utils.validate_s3_policy(bucket.s3_policy, bucket.name, async principal =>
-                 this._get_account_by_name(principal));
+                 this._get_account_by_id(principal));
             const update_bucket = JSON.stringify(bucket);
             await update_config_file(this.fs_context, this.bucket_schema_dir, bucket_config_path, update_bucket);
         } catch (err) {
