@@ -109,18 +109,19 @@ async function get_config_data_if_exists(config_root_backend, config_file_path, 
 /**
  * get_bucket_owner_account will return the account of the bucket_owner
  * otherwise it would throw an error
- * @param {object} global_config
- * @param {string} bucket_owner
+ * @param {Object} global_config
+ * @param {string} dir_path
+ * @param {string} name
  */
-async function get_bucket_owner_account(global_config, bucket_owner) {
-    const account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, bucket_owner);
+async function get_bucket_owner_account(global_config, dir_path, name, is_symlink) {
+    const account_config_path = is_symlink ? get_symlink_config_file_path(dir_path, name) : get_config_file_path(dir_path, name);
     try {
         const account = await get_config_data(global_config.config_root_backend, account_config_path);
         return account;
     } catch (err) {
         if (err.code === 'ENOENT') {
-            const detail_msg = `bucket owner ${bucket_owner} does not exists`;
-            throw_cli_error(ManageCLIError.BucketSetForbiddenBucketOwnerNotExists, detail_msg, {bucket_owner: bucket_owner});
+            const detail_msg = `bucket owner ${name} does not exists`;
+            throw_cli_error(ManageCLIError.BucketSetForbiddenBucketOwnerNotExists, detail_msg, {bucket_owner: name});
         }
         throw err;
     }
