@@ -198,7 +198,7 @@ class AccountSpaceFS {
     // 7 - delete the account config file
     async delete_user(params, account_sdk) {
         const action = 'delete_user';
-        dbg.log1(`AccountSpaceFS.${action}`, params, account_sdk);
+        dbg.log0(`AccountSpaceFS.${action}`, params, account_sdk);
         try {
             const requesting_account = account_sdk.requesting_account;
             // GAP - we do not have the user iam_path at this point (error message)

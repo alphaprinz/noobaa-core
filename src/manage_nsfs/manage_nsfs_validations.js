@@ -14,7 +14,7 @@ const ManageCLIError = require('../manage_nsfs/manage_nsfs_cli_errors').ManageCL
 const bucket_policy_utils = require('../endpoint/s3/s3_bucket_policy_utils');
 const { throw_cli_error, get_config_file_path, get_bucket_owner_account,
     get_config_data, get_options_from_file, get_boolean_or_string_value,
-    check_root_account_owns_user, get_config_data_if_exists } = require('../manage_nsfs/manage_nsfs_cli_utils');
+    check_root_account_owns_user, get_config_data_if_exists} = require('../manage_nsfs/manage_nsfs_cli_utils');
 const { TYPES, ACTIONS, VALID_OPTIONS, OPTION_TYPE, FROM_FILE, BOOLEAN_STRING_VALUES, BOOLEAN_STRING_OPTIONS,
     GLACIER_ACTIONS, LIST_UNSETABLE_OPTIONS, ANONYMOUS, DIAGNOSE_ACTIONS } = require('../manage_nsfs/manage_nsfs_constants');
 const iam_utils = require('../endpoint/iam/iam_utils');
@@ -320,7 +320,7 @@ async function validate_bucket_args(global_config, data, action) {
     if (action === ACTIONS.ADD || action === ACTIONS.UPDATE) {
         if (action === ACTIONS.ADD) native_fs_utils.validate_bucket_creation({ name: data.name });
         if (action === ACTIONS.UPDATE && !_.isUndefined(data.new_name)) native_fs_utils.validate_bucket_creation({ name: data.new_name });
-        if (action === ACTIONS.ADD && _.isUndefined(data.bucket_owner)) throw_cli_error(ManageCLIError.MissingBucketOwnerFlag);
+        if (action === ACTIONS.ADD && _.isUndefined(data.owner_account)) throw_cli_error(ManageCLIError.MissingBucketOwnerFlag);
         if (!data.path) throw_cli_error(ManageCLIError.MissingBucketPathFlag);
         // fs_backend='' used for deletion of the fs_backend property
         if (data.fs_backend !== undefined && !['GPFS', 'CEPH_FS', 'NFSv4'].includes(data.fs_backend)) {
@@ -332,7 +332,7 @@ async function validate_bucket_args(global_config, data, action) {
         if (!exists) {
             throw_cli_error(ManageCLIError.InvalidStoragePath, data.path);
         }
-        const account = await get_bucket_owner_account(global_config, data.bucket_owner);
+        const account = await get_bucket_owner_account(global_config, global_config.accounts_dir_path, data.owner_account);
         const account_fs_context = await native_fs_utils.get_fs_context(account.nsfs_account_config, data.fs_backend);
         if (!config.NC_DISABLE_ACCESS_CHECK) {
             const accessible = await native_fs_utils.is_dir_rw_accessible(account_fs_context, data.path);
@@ -342,7 +342,7 @@ async function validate_bucket_args(global_config, data, action) {
         }
         if (action === ACTIONS.ADD) {
             if (!account.allow_bucket_creation) {
-                const detail_msg = `${data.bucket_owner} account not allowed to create new buckets. ` +
+                const detail_msg = `${account.name} account not allowed to create new buckets. ` +
                 `Please make sure to have a valid new_buckets_path and enable the flag allow_bucket_creation`;
                 throw_cli_error(ManageCLIError.BucketCreationNotAllowed, detail_msg);
             }
@@ -488,17 +488,18 @@ function _validate_access_keys(access_key, secret_key) {
  * validate_delete_account will check if the account has at least one bucket
  * in case it finds one, it would throw an error
  * @param {object} global_config
- * @param {string} account_name
+ * @param {string} account_id
  */
-async function validate_account_not_owns_buckets(global_config, account_name) {
+async function validate_account_not_owns_buckets(global_config, account_id) {
     const fs_context = native_fs_utils.get_process_fs_context(global_config.config_root_backend);
     const entries = await nb_native().fs.readdir(fs_context, global_config.buckets_dir_path);
+    let data;
     await P.map_with_concurrency(10, entries, async entry => {
         if (entry.name.endsWith('.json')) {
             const full_path = path.join(global_config.buckets_dir_path, entry.name);
-            const data = await get_config_data_if_exists(global_config.config_root_backend, full_path);
-            if (data && data.bucket_owner === account_name) {
-                const detail_msg = `Account ${account_name} has bucket ${data.name}`;
+            data = await get_config_data_if_exists(global_config.config_root_backend, full_path);
+            if (data && data.owner_account === account_id) {
+                const detail_msg = `Account ${data.name} has bucket ${data.name}`;
                 throw_cli_error(ManageCLIError.AccountDeleteForbiddenHasBuckets, detail_msg);
             }
             return data;
