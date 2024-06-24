@@ -557,7 +557,7 @@ async function get_account_status(data, show_secrets) {
     try {
         const account_path = _.isUndefined(data.name) ?
             get_symlink_config_file_path(global_config.access_keys_dir_path, data.access_keys[0].access_key) :
-            get_config_file_path(global_config.accounts_dir_path, data.name);
+            get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name);
         const config_data = await get_config_data(global_config.config_root_backend, account_path, show_secrets);
         if (config_data.access_keys) config_data.access_keys = await nc_mkm.decrypt_access_keys(config_data);
         write_stdout_response(ManageCLIResponse.AccountStatus, config_data);
