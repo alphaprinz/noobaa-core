@@ -25,6 +25,7 @@ const { get_umasked_mode, isDirectory, validate_bucket_creation,
     entity_enum, translate_error_codes, update_config_file} = require('../util/native_fs_utils');
 const NoobaaEvent = require('../manage_nsfs/manage_nsfs_events_utils').NoobaaEvent;
 const { anonymous_access_key } = require('./object_sdk');
+const { get_account_by_principal } = require('../manage_nsfs/manage_nsfs_validations');
 
 const dbg = require('../util/debug_module')(__filename);
 const bucket_semaphore = new KeysSemaphore(1);
@@ -676,8 +677,9 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             dbg.log2("put_bucket_policy: bucket properties before validate_bucket_schema",
             bucket_to_validate);
             nsfs_schema_utils.validate_bucket_schema(bucket_to_validate);
-            await bucket_policy_utils.validate_s3_policy(bucket.s3_policy, bucket.name, async principal =>
-                 this._get_account_by_id(principal));
+            await bucket_policy_utils.validate_s3_policy(bucket.s3_policy, bucket.name,
+                async principal => await get_account_by_principal(this.fs_context, this.accounts_dir, this.root_accounts_dir, principal)
+            );
             const update_bucket = JSON.stringify(bucket);
             await update_config_file(this.fs_context, this.bucket_schema_dir, bucket_config_path, update_bucket);
         } catch (err) {
