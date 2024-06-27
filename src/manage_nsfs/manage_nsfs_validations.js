@@ -14,8 +14,7 @@ const ManageCLIError = require('../manage_nsfs/manage_nsfs_cli_errors').ManageCL
 const bucket_policy_utils = require('../endpoint/s3/s3_bucket_policy_utils');
 const { throw_cli_error, get_config_file_path, get_bucket_owner_account,
     get_config_data, get_options_from_file, get_boolean_or_string_value,
-    check_root_account_owns_user, get_config_data_if_exists,
-    get_symlink_config_file_path } = require('../manage_nsfs/manage_nsfs_cli_utils');
+    check_root_account_owns_user, get_config_data_if_exists } = require('../manage_nsfs/manage_nsfs_cli_utils');
 const { TYPES, ACTIONS, VALID_OPTIONS, OPTION_TYPE, FROM_FILE, BOOLEAN_STRING_VALUES, BOOLEAN_STRING_OPTIONS,
     GLACIER_ACTIONS, LIST_UNSETABLE_OPTIONS, ANONYMOUS, DIAGNOSE_ACTIONS } = require('../manage_nsfs/manage_nsfs_constants');
 const iam_utils = require('../endpoint/iam/iam_utils');
@@ -305,8 +304,8 @@ function validate_account_name(type, action, input_options_with_data) {
  * @param {object} input_options
  */
 function validate_bucket_identifier(action, input_options) {
-if (action === ACTIONS.STATUS || action === ACTIONS.ADD || action === ACTIONS.UPDATE || action === ACTIONS.DELETE) {
-        if (_.isUndefined(input_options.name)) throw_cli_error(ManageCLIError.MissingBucketNameFlag);
+    if (action === ACTIONS.STATUS || action === ACTIONS.ADD || action === ACTIONS.UPDATE || action === ACTIONS.DELETE) {
+            if (_.isUndefined(input_options.name)) throw_cli_error(ManageCLIError.MissingBucketNameFlag);
     }
     // in list there is no identifier
 }
@@ -346,7 +345,8 @@ async function validate_bucket_args(global_config, data, action) {
                 const detail_msg = `${account.name} account not allowed to create new buckets. ` +
                 `Please make sure to have a valid new_buckets_path and enable the flag allow_bucket_creation`;
                 throw_cli_error(ManageCLIError.BucketCreationNotAllowed, detail_msg);
-            }
+        }
+            data.owner_account = account._id; // TODO move this assignment to better place
         }
         if (account.owner) {
             const detail_msg = `account ${data.bucket_owner} is IAM account`;
@@ -356,9 +356,8 @@ async function validate_bucket_args(global_config, data, action) {
             try {
                 await bucket_policy_utils.validate_s3_policy(data.s3_policy, data.name,
                     async principal =>
-                        (await get_account_by_principal(fs_context_fs_backend, global_config.accounts_dir_path,
-                            global_config.root_accounts_dir_path, principal)
-                ));
+                        await get_account_by_principal(global_config.config_root_backend,
+                            global_config.accounts_dir_path, global_config.root_accounts_dir_path, principal));
             } catch (err) {
                 dbg.error('validate_bucket_args invalid bucket policy err:', err);
                 throw_cli_error(ManageCLIError.MalformedPolicy, data.s3_policy);
