@@ -14,7 +14,8 @@ const ManageCLIError = require('../manage_nsfs/manage_nsfs_cli_errors').ManageCL
 const bucket_policy_utils = require('../endpoint/s3/s3_bucket_policy_utils');
 const { throw_cli_error, get_config_file_path, get_bucket_owner_account,
     get_config_data, get_options_from_file, get_boolean_or_string_value,
-    check_root_account_owns_user, get_config_data_if_exists} = require('../manage_nsfs/manage_nsfs_cli_utils');
+    check_root_account_owns_user, get_config_data_if_exists,
+    get_symlink_config_file_path } = require('../manage_nsfs/manage_nsfs_cli_utils');
 const { TYPES, ACTIONS, VALID_OPTIONS, OPTION_TYPE, FROM_FILE, BOOLEAN_STRING_VALUES, BOOLEAN_STRING_OPTIONS,
     GLACIER_ACTIONS, LIST_UNSETABLE_OPTIONS, ANONYMOUS, DIAGNOSE_ACTIONS } = require('../manage_nsfs/manage_nsfs_constants');
 const iam_utils = require('../endpoint/iam/iam_utils');
@@ -354,17 +355,10 @@ async function validate_bucket_args(global_config, data, action) {
         if (data.s3_policy) {
             try {
                 await bucket_policy_utils.validate_s3_policy(data.s3_policy, data.name,
-                    async principal => {
-                        const account_config_path = get_config_file_path(global_config.accounts_dir_path, principal);
-                        try {
-                            const fs_context_config_root_backend = native_fs_utils.get_process_fs_context(
-                                global_config.config_root_backend);
-                            await nb_native().fs.stat(fs_context_config_root_backend, account_config_path);
-                            return true;
-                        } catch (err) {
-                            return false;
-                        }
-                    });
+                    async principal =>
+                        (await get_account_by_principal(fs_context_fs_backend, global_config.accounts_dir_path,
+                            global_config.root_accounts_dir_path, principal)
+                ));
             } catch (err) {
                 dbg.error('validate_bucket_args invalid bucket policy err:', err);
                 throw_cli_error(ManageCLIError.MalformedPolicy, data.s3_policy);
@@ -550,6 +544,20 @@ async function validate_root_accounts_manager_update(global_config, account) {
     await check_if_root_account_does_not_have_IAM_users(global_config, account, ACTIONS.UPDATE);
 }
 
+async function file_exists(fs_context, file_path) {
+    try {
+        await nb_native().fs.stat(fs_context, file_path);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
+async function get_account_by_principal(fs_context, accounts_dir_path, root_accounts_dir_path, principal) {
+    return await file_exists(fs_context, get_config_file_path(accounts_dir_path, principal)) ||
+           await file_exists(fs_context, get_symlink_config_file_path(root_accounts_dir_path, principal));
+}
+
 ///////////////////////////////////
 //// IP WhITE LIST VALIDATIONS ////
 ///////////////////////////////////
@@ -580,3 +588,4 @@ exports.validate_root_accounts_manager_update = validate_root_accounts_manager_u
 exports.validate_whitelist_arg = validate_whitelist_arg;
 exports.validate_whitelist_ips = validate_whitelist_ips;
 exports.validate_flags_combination = validate_flags_combination;
+exports.get_account_by_principal = get_account_by_principal;
