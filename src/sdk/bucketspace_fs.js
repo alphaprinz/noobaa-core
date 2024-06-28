@@ -162,6 +162,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             if (!is_valid) {
                 dbg.warn('BucketSpaceFS: account linked to bucket is not valid: ', name);
             }
+
             const nsr = {
                 resource: {
                     fs_root_path: this.fs_root,
@@ -185,7 +186,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             bucket.bucket_owner = new SensitiveString(account.name);
             bucket.owner_account = {
                 id: bucket.owner_account,
-                email: account.email
+                email: new SensitiveString(account.email)
             };
             if (bucket.s3_policy) {
                 for (const [s_index, statement] of bucket.s3_policy.Statement.entries()) {
@@ -201,6 +202,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
                     }
                 }
             }
+
             return bucket;
         } catch (err) {
             const rpc_error = translate_error_codes(err, entity_enum.BUCKET);
@@ -745,11 +747,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
 
         // If the system owner account wants to access the bucket, allow it
         if (is_system_owner) return true;
-<<<<<<< HEAD
-        const is_owner = (bucket.owner_account && bucket.owner_account.id === account._id);
-=======
-        const is_owner = (bucket.owner_account.unwrap() === account_identifier);
->>>>>>> 0d21da1e3 (NC | account by id | remove bucket_owner from bucketspace_fs.js)
+        const is_owner = (bucket.owner_account === account_identifier);z
         const bucket_policy = bucket.s3_policy;
 
         if (!bucket_policy) {
