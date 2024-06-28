@@ -192,6 +192,12 @@ async function get_bucket_status(data) {
     try {
         const bucket_path = get_config_file_path(global_config.buckets_dir_path, data.name);
         const config_data = await get_config_data(global_config.config_root_backend, bucket_path);
+        const account_path = get_config_file_path(global_config.accounts_dir_path, config_data.owner_account);
+        const account_data = await get_config_data(global_config.config_root_backend, account_path);
+        config_data.owner_account = {
+            id: account_data._id,
+            email: account_data.email
+        };
         write_stdout_response(ManageCLIResponse.BucketStatus, config_data);
     } catch (err) {
         const err_code = err.code === 'EACCES' ? ManageCLIError.AccessDenied : ManageCLIError.NoSuchBucket;
