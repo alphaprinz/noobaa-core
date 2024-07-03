@@ -107,7 +107,7 @@ async function bucket_management(action, user_input) {
 
 // in name and new_name we allow type number, hence convert it to string
 async function fetch_bucket_data(action, user_input) {
-    const account = await get_bucket_owner_account(global_config, global_config.access_keys_dir_path, user_input.owner);
+    const account = await get_bucket_owner_account(global_config, global_config.access_keys_dir_path, user_input.owner, false);
     let data = {
         // added undefined values to keep the order the properties when printing the data object
         _id: undefined,

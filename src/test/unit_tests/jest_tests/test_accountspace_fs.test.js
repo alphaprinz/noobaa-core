@@ -281,7 +281,7 @@ describe('Accountspace_FS tests', () => {
                 expect(res.arn).toBeDefined();
                 expect(res.create_date).toBeDefined();
 
-                const user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, params.username);
+                const user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, params.username, true);
                 expect(user_account_config_file.name).toBe(params.username);
                 expect(user_account_config_file._id).toBeDefined();
                 expect(user_account_config_file.creation_date).toBeDefined();
@@ -310,7 +310,7 @@ describe('Accountspace_FS tests', () => {
                 expect(res.arn).toBeDefined();
                 expect(res.create_date).toBeDefined();
 
-                const user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, params.username);
+                const user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, params.username, true);
                 expect(user_account_config_file.name).toBe(params.username);
                 expect(user_account_config_file._id).toBeDefined();
                 expect(user_account_config_file.creation_date).toBeDefined();
@@ -340,7 +340,7 @@ describe('Accountspace_FS tests', () => {
                 expect(res.arn).toBeDefined();
                 expect(res.create_date).toBeDefined();
 
-                const user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, params.username);
+                const user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, params.username, true);
                 expect(user_account_config_file.name).toBe(params.username);
                 expect(user_account_config_file._id).toBeDefined();
                 expect(user_account_config_file.creation_date).toBeDefined();
@@ -548,7 +548,7 @@ describe('Accountspace_FS tests', () => {
                 expect(res.username).toBe(dummy_user_root_account.username);
                 expect(res.user_id).toBeDefined();
                 expect(res.arn).toBeDefined();
-                const user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, params.username);
+                const user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, params.username, true);
                 expect(user_account_config_file.name).toBe(params.username);
                 expect(user_account_config_file.iam_path).toBe(dummy_iam_path);
             });
@@ -652,7 +652,7 @@ describe('Accountspace_FS tests', () => {
                 await accountspace_fs.update_user(params, account_sdk);
             });
 
-            it('update_user should return user params (user has access_keys)', async function() {
+            it('update_user2 should return user params (user has access_keys)', async function() {
                 const account_sdk = make_dummy_account_sdk();
                 // create the user
                 let params = {
@@ -781,7 +781,7 @@ describe('Accountspace_FS tests', () => {
                     expect(err).toHaveProperty('code', IamError.DeleteConflict.code);
                     expect(err).toHaveProperty('message');
                     expect(err.message).toMatch(/must delete access keys first/i);
-                    const user_account_config_path = path.join(accountspace_fs.accounts_dir, params.username + '.json');
+                    const user_account_config_path = path.join(accountspace_fs.root_accounts_dir, params.username + '.symlink');
                     await fs_utils.file_must_exist(user_account_config_path);
                 }
             });
@@ -799,8 +799,8 @@ describe('Accountspace_FS tests', () => {
                     // same params
                     await accountspace_fs.create_access_key(params, account_sdk);
                     // create a user with the root account
-                    const account_config_file = await read_config_file(accountspace_fs.accounts_dir, username_for_root_account);
-                    const root_account_manager_id = account_sdk.requesting_account._id;json
+                    const account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, username_for_root_account, true);
+                    const root_account_manager_id = account_sdk.requesting_account._id;
                     const account_sdk_root = make_dummy_account_sdk_from_root_accounts_manager(
                         account_config_file, root_account_manager_id);
                     const username = dummy_username7;
@@ -817,7 +817,7 @@ describe('Accountspace_FS tests', () => {
                     expect(err).toHaveProperty('code', IamError.DeleteConflict.code);
                     expect(err).toHaveProperty('message');
                     expect(err.message).toMatch(/must delete IAM users first/i);
-                    const user_account_config_path = path.join(accountspace_fs.accounts_dir, params.username + '.json');
+                    const user_account_config_path = path.join(accountspace_fs.root_accounts_dir, params.username + '.symlink');
                     await fs_utils.file_must_exist(user_account_config_path);
                 }
             });
@@ -833,7 +833,7 @@ describe('Accountspace_FS tests', () => {
                     await accountspace_fs.create_user(params, account_sdk);
                     // create a dummy bucket
                     const bucket_name = `my-bucket-${params.username}`;
-                    const user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, params.username);
+                    const user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, params.username, true);
                     await create_dummy_bucket(user_account_config_file, bucket_name);
                     await accountspace_fs.delete_user(params, account_sdk);
                     throw new NoErrorThrownError();
@@ -1156,7 +1156,7 @@ describe('Accountspace_FS tests', () => {
                 expect(res.status).toBe('Active');
                 expect(res.secret_key).toBeDefined();
 
-                const user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, params.username);
+                const user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, params.username, true);
                 expect(user_account_config_file.name).toBe(params.username);
                 expect(user_account_config_file.access_keys).toBeDefined();
                 expect(Array.isArray(user_account_config_file.access_keys)).toBe(true);
@@ -1277,11 +1277,13 @@ describe('Accountspace_FS tests', () => {
             it('get_access_key_last_used return an error if user is not owned by the root account (requester is an IAM user)', async function() {
                 try {
                     let account_sdk = make_dummy_account_sdk();
-                    const requester_account_config_file = await read_config_file(accountspace_fs.accounts_dir, dummy_user2.username);
+                    const requester_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir,
+                        dummy_user2.username, true);
                     // by the IAM user
                     account_sdk = make_dummy_account_sdk_created_from_another_account(requester_account_config_file,
                         requester_account_config_file.owner);
-                    const user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, dummy_user_root_account.username);
+                    const user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir,
+                        dummy_user_root_account.username, true);
                     const access_key = user_account_config_file.access_keys[0].access_key;
                     const params = {
                         access_key: access_key,
@@ -1406,7 +1408,7 @@ describe('Accountspace_FS tests', () => {
                 const params = {
                     username: dummy_username1,
                     access_key: access_key,
-                    status: access_key_status_enum.ACTIVE,
+                    status: access_key_status_enum.ACTIVE
                 };
                 const res = await accountspace_fs.update_access_key(params, account_sdk);
                 expect(res).toBeUndefined();
@@ -1457,7 +1459,7 @@ describe('Accountspace_FS tests', () => {
             it('update_access_key should not return any param (update status to Inactive) (requesting account is root accounts manager requested account is root account)', async function() {
                 const username = dummy_user_root_account.username;
                 const account_sdk = make_dummy_account_sdk_root_accounts_manager();
-                let user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, username);
+                let user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, username, true);
                 const access_key = user_account_config_file.access_keys[0].access_key;
                 const params = {
                     username: username,
@@ -1466,7 +1468,7 @@ describe('Accountspace_FS tests', () => {
                 };
                 const res = await accountspace_fs.update_access_key(params, account_sdk);
                 expect(res).toBeUndefined();
-                user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, username);
+                user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, username, true);
                 expect(user_account_config_file.access_keys[0].deactivated).toBe(true);
             });
         });
@@ -1614,7 +1616,7 @@ describe('Accountspace_FS tests', () => {
             it('delete_access_key should not return any param (requesting account is root accounts manager requested account is root account)', async function() {
                 const username = dummy_user_root_account.username;
                 const account_sdk = make_dummy_account_sdk_root_accounts_manager();
-                let user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, username);
+                let user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, username, true);
                 const access_key = user_account_config_file.access_keys[0].access_key;
                 const params = {
                     username: username,
@@ -1622,7 +1624,7 @@ describe('Accountspace_FS tests', () => {
                 };
                 const res = await accountspace_fs.delete_access_key(params, account_sdk);
                 expect(res).toBeUndefined();
-                user_account_config_file = await read_config_file(accountspace_fs.accounts_dir, username);
+                user_account_config_file = await read_config_file(accountspace_fs.root_accounts_dir, username, true);
                 expect(user_account_config_file.access_keys.length).toBe(1);
                 const symlink_config_path = path.join(accountspace_fs.access_keys_dir, access_key + '.symlink');
                 await fs_utils.file_must_not_exist(symlink_config_path);
