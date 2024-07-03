@@ -207,7 +207,8 @@ class AccountSpaceFS {
             this._check_if_requested_account_is_root_account_or_IAM_user(action, requesting_account, account_to_delete);
             this._check_if_requested_is_owned_by_root_account(action, requesting_account, account_to_delete);
             await this._check_if_user_does_not_have_resources_before_deletion(action, account_to_delete);
-            await native_fs_utils.delete_config_file(this.fs_context, this.accounts_dir, this._get_account_config_path(account_to_delete._id));
+            await native_fs_utils.delete_config_file(this.fs_context, this.accounts_dir,
+                this._get_account_config_path(account_to_delete._id));
             await nb_native().fs.unlink(this.fs_context, root_account_config_path);
         } catch (err) {
             dbg.error(`AccountSpaceFS.${action} error`, err);
@@ -756,7 +757,7 @@ class AccountSpaceFS {
             if (entry.name.endsWith('.json')) {
                 const full_path = path.join(this.buckets_dir, entry.name);
                 const bucket_data = await get_config_data_if_exists(this.config_root_backend, full_path, false);
-                if (bucket_data && bucket_data.bucket_owner === account_to_delete.name) {
+                if (bucket_data && bucket_data.owner_account === account_to_delete._id) {
                     this._throw_error_delete_conflict(action, account_to_delete, resource_name);
                 }
                 return bucket_data;

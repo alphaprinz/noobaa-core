@@ -12,7 +12,7 @@ const string_utils = require('../util/string_utils');
 const native_fs_utils = require('../util/native_fs_utils');
 const ManageCLIError = require('../manage_nsfs/manage_nsfs_cli_errors').ManageCLIError;
 const bucket_policy_utils = require('../endpoint/s3/s3_bucket_policy_utils');
-const { throw_cli_error, get_config_file_path, get_bucket_owner_account,
+const { throw_cli_error, get_config_file_path, get_symlink_config_file_path, get_bucket_owner_account,
     get_config_data, get_options_from_file, get_boolean_or_string_value,
     check_root_account_owns_user, get_config_data_if_exists } = require('../manage_nsfs/manage_nsfs_cli_utils');
 const { TYPES, ACTIONS, VALID_OPTIONS, OPTION_TYPE, FROM_FILE, BOOLEAN_STRING_VALUES, BOOLEAN_STRING_OPTIONS,
@@ -332,7 +332,7 @@ async function validate_bucket_args(global_config, data, action) {
         if (!exists) {
             throw_cli_error(ManageCLIError.InvalidStoragePath, data.path);
         }
-        const account = await get_bucket_owner_account(global_config, global_config.accounts_dir_path, data.owner_account);
+        const account = await get_bucket_owner_account(global_config, global_config.accounts_dir_path, data.owner_account, false);
         const account_fs_context = await native_fs_utils.get_fs_context(account.nsfs_account_config, data.fs_backend);
         if (!config.NC_DISABLE_ACCESS_CHECK) {
             const accessible = await native_fs_utils.is_dir_rw_accessible(account_fs_context, data.path);

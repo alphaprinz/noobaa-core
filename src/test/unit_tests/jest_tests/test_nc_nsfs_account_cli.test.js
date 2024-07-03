@@ -390,7 +390,7 @@ describe('manage nsfs cli account flow', () => {
             await fs_utils.file_must_exist(new_buckets_path);
             await set_path_permissions_and_owner(new_buckets_path, account_options, 0o700);
             await exec_manage_cli(type, action, account_options);
-            const account = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
+            const account = await read_config_file(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name, true);
             expect(account.iam_operate_on_root_account).toBe(true);
             expect(account.allow_bucket_creation).toBe(true);
         });
@@ -405,7 +405,7 @@ describe('manage nsfs cli account flow', () => {
             await fs_utils.file_must_exist(new_buckets_path);
             await set_path_permissions_and_owner(new_buckets_path, account_options, 0o700);
             await exec_manage_cli(type, action, account_options);
-            const account = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
+            const account = await read_config_file(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name, true);
             expect(account.iam_operate_on_root_account).toBe(false);
             expect(account.allow_bucket_creation).toBe(true); // by default it is inferred when we have new_buckets_path
         });
@@ -807,12 +807,12 @@ describe('manage nsfs cli account flow', () => {
                 const account_options = { config_root, name, iam_operate_on_root_account: 'true'};
                 const action = ACTIONS.UPDATE;
                 await exec_manage_cli(type, action, account_options);
-                let new_account_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
+                let new_account_details = await read_config_file(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name, true);
                 expect(new_account_details.iam_operate_on_root_account).toBe(true);
 
                 account_options.iam_operate_on_root_account = 'false';
                 await exec_manage_cli(type, action, account_options);
-                new_account_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
+                new_account_details = await read_config_file(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name, true);
                 expect(new_account_details.iam_operate_on_root_account).toBe(false);
             });
 
@@ -822,7 +822,7 @@ describe('manage nsfs cli account flow', () => {
                 const account_options = { config_root, name, iam_operate_on_root_account: 'true'};
                 const action = ACTIONS.UPDATE;
                 await exec_manage_cli(type, action, account_options);
-                const new_account_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
+                const new_account_details = await read_config_file(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name, true);
                 expect(new_account_details.iam_operate_on_root_account).toBe(true);
 
                 // unset iam_operate_on_root_account (is not allowed)
@@ -852,16 +852,16 @@ describe('manage nsfs cli account flow', () => {
 
             it('should fail - cli update account iam_operate_on_root_account true when account owns IAM accounts', async function() {
                 const { name } = defaults;
-                const accounts_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
+                const accounts_details = await read_config_file(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name, true);
                 const account_id = accounts_details._id;
 
                 const account_name = 'account-to-be-owned';
                 const account_options1 = { config_root, name: account_name, uid: 5555, gid: 5555 };
-                await exec_manage_cli(type, ACTIONS.ADD, account_options1);
+                const new_account_id = JSON.parse(await exec_manage_cli(type, ACTIONS.ADD, account_options1)).response.reply._id;
 
                 // update the account to have the property owner
                 // (we use this way because now we don't have the way to create IAM users through the noobaa cli)
-                const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_name + '.json');
+                const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, new_account_id + '.json');
                 const { data } = await nb_native().fs.readFile(DEFAULT_FS_CONFIG, account_config_path);
                 const config_data = JSON.parse(data.toString());
                 config_data.owner = account_id; // just so we can identify this account as IAM user
@@ -879,11 +879,11 @@ describe('manage nsfs cli account flow', () => {
                 // update the account to have the property owner
                 // (we use this way because now we don't have the way to create IAM users through the noobaa cli)
                 const { name } = defaults;
-                const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, name + '.json');
+                const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name + '.symlink');
                 const { data } = await nb_native().fs.readFile(DEFAULT_FS_CONFIG, account_config_path);
                 const config_data = JSON.parse(data.toString());
                 config_data.owner = '65a62e22ceae5e5f1a758aa9'; // just so we can identify this account as IAM user
-                await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ACCOUNTS,
+                await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ROOT_ACCOUNTS,
                     account_config_path, JSON.stringify(config_data));
 
                 // set the value of iam_operate_on_root_account to be true
