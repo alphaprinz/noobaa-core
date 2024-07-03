@@ -171,7 +171,7 @@ async function fetch_existing_bucket_data(target) {
     return data;
 }
 
-async function add_bucket(data, account) {
+async function add_bucket(data) {
     await manage_nsfs_validations.validate_bucket_args(global_config, data, ACTIONS.ADD);
     const fs_context = native_fs_utils.get_process_fs_context(global_config.config_root_backend);
     const bucket_conf_path = get_config_file_path(global_config.buckets_dir_path, data.name);
@@ -530,7 +530,7 @@ async function update_account(data, is_flag_iam_operate_on_root_account) {
         //write_stdout_response(ManageCLIResponse.AccountUpdated, "update_name 2 = " + update_name);
         await nb_native().fs.unlink(fs_context, cur_root_account_config_path);
         await nb_native().fs.symlink(fs_context, new_account_relative_config_path, new_root_account_config_path);
-    }// else if (update_access_key) {
+    }
     await native_fs_utils.update_config_file(fs_context, global_config.accounts_dir_path, new_account_config_path, encrypted_data);
     //}
     // TODO: safe_unlink can be better but the current impl causing ELOOP - Too many levels of symbolic links

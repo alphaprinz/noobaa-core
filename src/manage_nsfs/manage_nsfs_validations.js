@@ -543,18 +543,20 @@ async function validate_root_accounts_manager_update(global_config, account) {
     await check_if_root_account_does_not_have_IAM_users(global_config, account, ACTIONS.UPDATE);
 }
 
-async function file_exists(fs_context, file_path) {
-    try {
-        await nb_native().fs.stat(fs_context, file_path);
-        return true;
-    } catch (err) {
-        return false;
-    }
-}
+/**
+ * Gets the relevant account according to policy's principal.
+ * Currently we allow principal to be either account name or account id,
+ * so we need to check both.
+ * @param {Object} fs_context NativeFSContext
+ * @param {String} accounts_dir_path path to accounts by id dir
+ * @param {String} root_accounts_dir_path path to accounts by name dir
+ * @param {String} principal from policy, either account's name or id
+ * @returns
+ */
 
 async function get_account_by_principal(fs_context, accounts_dir_path, root_accounts_dir_path, principal) {
-    return await file_exists(fs_context, get_config_file_path(accounts_dir_path, principal)) ||
-           await file_exists(fs_context, get_symlink_config_file_path(root_accounts_dir_path, principal));
+    return await native_fs_utils.is_path_exists(fs_context, get_config_file_path(accounts_dir_path, principal)) ||
+           await native_fs_utils.is_path_exists(fs_context, get_symlink_config_file_path(root_accounts_dir_path, principal));
 }
 
 ///////////////////////////////////

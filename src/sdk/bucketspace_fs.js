@@ -153,6 +153,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             if (!is_valid) {
                 dbg.warn('BucketSpaceFS: one or more bucket config check is failed for bucket : ', name);
             }
+            //also get bucket's account
             const account_config_path = this._get_account_config_path(bucket.owner_account);
             data = (await nb_native().fs.readFile(this.fs_context, account_config_path)).data;
             const account = JSON.parse(data.toString());

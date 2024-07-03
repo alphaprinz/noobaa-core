@@ -111,7 +111,7 @@ async function get_config_data_if_exists(config_root_backend, config_file_path, 
  * otherwise it would throw an error
  * @param {Object} global_config
  * @param {string} dir_path
- * @param {string} name
+ * @param {string} filename
  */
 async function get_bucket_owner_account(global_config, dir_path, name, is_symlink) {
     const account_config_path = is_symlink ? get_symlink_config_file_path(dir_path, name) : get_config_file_path(dir_path, name);
