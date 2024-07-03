@@ -445,7 +445,7 @@ describe('schema validation NC NSFS bucket', () => {
 function get_bucket_data() {
     const bucket_name = 'bucket1';
     const id = '65a62e22ceae5e5f1a758aa8';
-    const system_owner = '65b3c68b59ab67b16f98c26e'; // GAP - currently account name
+    const system_owner = '65b3c68b59ab67b16f98c26e'; // GAP - currently bucker owner account id
     const owner_account = '65b3c68b59ab67b16f98c26e';
     const versioning_disabled = 'DISABLED';
     const creation_date = new Date('December 17, 2023 09:00:00').toISOString();
