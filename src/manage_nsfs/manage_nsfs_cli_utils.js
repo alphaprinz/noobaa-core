@@ -110,9 +110,9 @@ async function get_config_data_if_exists(config_root_backend, config_file_path, 
  * get_bucket_owner_account will return the account of the bucket_owner
  * otherwise it would throw an error
  * @param {Object} global_config
- * @param {string} dir_path
- * @param {string} account_identifier
- * @param {boolean} is_symlink
+ * @param {string} dir_path directory with account file
+ * @param {string} account_identifier account file name, either name or id
+ * @param {boolean} is_symlink whether while is symlink or not. Name -> true, id -> false/undef
  */
 async function get_bucket_owner_account(global_config, dir_path, account_identifier, is_symlink) {
     const account_config_path = is_symlink ?
