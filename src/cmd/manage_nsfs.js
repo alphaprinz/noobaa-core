@@ -107,7 +107,10 @@ async function bucket_management(action, user_input) {
 
 // in name and new_name we allow type number, hence convert it to string
 async function fetch_bucket_data(action, user_input) {
+<<<<<<< HEAD
     const account = await get_bucket_owner_account(global_config, global_config.access_keys_dir_path, user_input.owner, false);
+=======
+>>>>>>> d0b230963 (NC | account by id | global_config merge fix)
     let data = {
         // added undefined values to keep the order the properties when printing the data object
         _id: undefined,
@@ -394,7 +397,7 @@ async function fetch_existing_account_data(action, target, decrypt_secret_key) {
     let source;
     try {
         const account_path = target.name ?
-            get_symlink_config_file_path(global_config.accounts_dir_path, target.name) :
+            get_symlink_config_file_path(global_config.root_accounts_dir_path, target.name) :
             get_symlink_config_file_path(global_config.access_keys_dir_path, target.access_keys[0].access_key);
         source = await get_config_data(global_config.config_root_backend, account_path, true);
         if (decrypt_secret_key) source.access_keys = await nc_mkm.decrypt_access_keys(source);
@@ -590,7 +593,8 @@ async function manage_account_operations(action, data, show_secrets, user_input)
     } else if (action === ACTIONS.LIST) {
         const account_filters = _.pick(user_input, LIST_ACCOUNT_FILTERS);
         const wide = get_boolean_or_string_value(user_input.wide);
-        const accounts = await list_config_files(TYPES.ACCOUNT, global_config.root_accounts_dir_path, wide, show_secrets, account_filters, true);
+        const accounts = await list_config_files(TYPES.ACCOUNT, global_config.root_accounts_dir_path, wide,
+            show_secrets, account_filters, true);
         write_stdout_response(ManageCLIResponse.AccountList, accounts);
     } else {
         // we should not get here (we check it before)
