@@ -145,7 +145,10 @@ async function fetch_bucket_data(action, user_input) {
 
     //if we're updating the owner, needs to override owner in file with the owner from user input.
     //if we're adding a bucket, need to set its owner
-    if (action === ACTIONS.UPDATE && user_input.owner || action === ACTIONS.ADD) {
+    if ((action === ACTIONS.UPDATE && user_input.owner) || (action === ACTIONS.ADD)) {
+        if (!user_input.owner) {
+            throw_cli_error(ManageCLIError.MissingBucketOwnerFlag);
+        }
         const account = await get_bucket_owner_account(global_config, global_config.root_accounts_dir_path, user_input.owner, true);
         data.owner_account = account._id;
         data.system_owner = account._id; // GAP - needs to be the system_owner (currently it is the account name)

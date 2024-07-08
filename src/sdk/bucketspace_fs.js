@@ -149,7 +149,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             let { data } = await nb_native().fs.readFile(this.fs_context, bucket_config_path);
             const bucket = JSON.parse(data.toString());
             nsfs_schema_utils.validate_bucket_schema(bucket);
-            let is_valid = await this.check_bucket_config(bucket);
+            const is_valid = await this.check_bucket_config(bucket);
             if (!is_valid) {
                 dbg.warn('BucketSpaceFS: one or more bucket config check is failed for bucket : ', name);
             }
@@ -158,10 +158,6 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             data = (await nb_native().fs.readFile(this.fs_context, account_config_path)).data;
             const account = JSON.parse(data.toString());
             nsfs_schema_utils.validate_account_schema(account);
-            is_valid = await this.check_bucket_config(bucket);
-            if (!is_valid) {
-                dbg.warn('BucketSpaceFS: account linked to bucket is not valid: ', name);
-            }
 
             const nsr = {
                 resource: {
