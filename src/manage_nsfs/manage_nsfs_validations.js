@@ -12,7 +12,7 @@ const string_utils = require('../util/string_utils');
 const native_fs_utils = require('../util/native_fs_utils');
 const ManageCLIError = require('../manage_nsfs/manage_nsfs_cli_errors').ManageCLIError;
 const bucket_policy_utils = require('../endpoint/s3/s3_bucket_policy_utils');
-const { throw_cli_error, get_config_file_path, get_symlink_config_file_path, get_bucket_owner_account,
+const { throw_cli_error, get_config_file_path, get_bucket_owner_account,
     get_config_data, get_options_from_file, get_boolean_or_string_value,
     check_root_account_owns_user, get_config_data_if_exists,
     get_symlink_config_file_path } = require('../manage_nsfs/manage_nsfs_cli_utils');
@@ -433,6 +433,7 @@ async function validate_account_args(global_config, data, action, is_flag_iam_op
         }
     }
     if (action === ACTIONS.DELETE) {
+<<<<<<< HEAD
         await validate_account_resources_before_deletion(global_config, data);
     }
 }
@@ -450,6 +451,9 @@ async function validate_account_resources_before_deletion(global_config, data) {
     // If it is root account (not owned by other account) then we check that it doesn't owns IAM accounts
     if (data.owner === undefined) {
         await check_if_root_account_does_not_have_IAM_users(global_config, data, ACTIONS.DELETE);
+=======
+        await validate_delete_account(global_config, data._id);
+>>>>>>> d0b230963 (NC | account by id | global_config merge fix)
     }
 }
 
