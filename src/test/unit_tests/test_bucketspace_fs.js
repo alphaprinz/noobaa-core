@@ -275,7 +275,9 @@ mocha.describe('bucketspace_fs', function() {
             account = await nc_mkm.encrypt_access_keys(account);
             const account_path = get_config_file_path(CONFIG_SUBDIRS.ACCOUNTS, account._id);
             const account_access_path = get_symlink_path(CONFIG_SUBDIRS.ACCESS_KEYS, account.access_keys[0].access_key);
-            const root_account_path = get_symlink_path(CONFIG_SUBDIRS.ROOT_ACCOUNTS, account.name);
+            const root_account_dir = path.join(CONFIG_SUBDIRS.ROOT_ACCOUNTS, account.name);
+            await fs_utils.create_fresh_path(path.join(config_root, root_account_dir));
+            const root_account_path = get_symlink_path(root_account_dir, account.name);
             await fs.promises.writeFile(account_path, JSON.stringify(account));
             await fs.promises.symlink(account_path, account_access_path);
             await fs.promises.symlink(account_path, root_account_path);

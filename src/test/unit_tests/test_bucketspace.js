@@ -1777,9 +1777,11 @@ mocha.describe('Namespace s3_bucket_policy', function() {
     const nsr = 'nsr';
     let accounts_dir_path;
     let account_config_path;
+    let anonymous_account_id;
     if (is_nc_coretest) {
         accounts_dir_path = path.join(NC_CORETEST_CONFIG_DIR_PATH, accounts_dir_name);
-        account_config_path = path.join(accounts_dir_path, config.ANONYMOUS_ACCOUNT_NAME + '.json');
+        anonymous_account_id = mongo_utils.mongoObjectId();
+        account_config_path = path.join(accounts_dir_path, anonymous_account_id + '.json');
     }
 
     mocha.before(async function() {
@@ -1824,7 +1826,7 @@ mocha.describe('Namespace s3_bucket_policy', function() {
         await assert_throws_async(s3_anon_client.listObjects({ Bucket: bucket_name }), 'The AWS access key Id you provided does not exist in our records.');
     });
 
-    mocha.it('Namesapce - anonymous user should be able to list bucket objects', async function() {
+    mocha.it('Namesapce - anonymous2 user should be able to list bucket objects', async function() {
         // Skipping because only NC NSFS will have anonymous account.
         if (!is_nc_coretest) this.skip(); // eslint-disable-line no-invalid-this
         await fs_utils.file_must_exist(path.join(s3_new_ns_buckets_path, bucket_name));
@@ -1833,7 +1835,8 @@ mocha.describe('Namespace s3_bucket_policy', function() {
             uid: process.getuid(),
             gid: process.getgid(),
         };
-        await add_anonymous_account(nsfs_account_config, accounts_dir_path, root_accounts_dir_name, account_config_path);
+        await add_anonymous_account(nsfs_account_config, accounts_dir_path, root_accounts_dir_name,
+            account_config_path, anonymous_account_id);
         await s3_client.putBucketPolicy({
             Bucket: bucket_name,
             Policy: JSON.stringify(anon_access_policy)
@@ -1989,7 +1992,8 @@ mocha.describe('Namespace s3_bucket_policy', function() {
         const nsfs_account_config = {
             distinguished_name: 'root',
         };
-        await add_anonymous_account(nsfs_account_config, accounts_dir_path, root_accounts_dir_name, account_config_path);
+        await add_anonymous_account(nsfs_account_config, accounts_dir_path, root_accounts_dir_name,
+            account_config_path, anonymous_account_id);
         await s3_client.putBucketPolicy({
             Bucket: bucket_name,
             Policy: JSON.stringify(anon_access_policy)
@@ -2083,10 +2087,11 @@ async function update_account_nsfs_config(email, default_resource, new_nsfs_acco
 }
 
 // Create an anonymous account for anonymous request. Use this account UID and GID for bucket access.
-async function add_anonymous_account(nsfs_account_config, accounts_dir_path, root_accounts_dir_path, account_config_path) {
+async function add_anonymous_account(nsfs_account_config, accounts_dir_path,
+        root_accounts_dir_path, account_config_path, anonymous_account_id) {
     const { master_key_id } = await nc_mkm.encrypt_access_keys({});
     const data = {
-        _id: mongo_utils.mongoObjectId(),
+        _id: anonymous_account_id,
         name: config.ANONYMOUS_ACCOUNT_NAME,
         email: config.ANONYMOUS_ACCOUNT_NAME,
         nsfs_account_config: nsfs_account_config,
@@ -2103,8 +2108,11 @@ async function add_anonymous_account(nsfs_account_config, accounts_dir_path, roo
     }
     await native_fs_utils.create_config_file(DEFAULT_FS_CONFIG, accounts_dir_path, account_config_path, account_data);
     //create root account symlink to the account config file
+    await native_fs_utils._create_path(
+        path.join(NC_CORETEST_CONFIG_DIR_PATH, root_accounts_dir_path, config.ANONYMOUS_ACCOUNT_NAME), DEFAULT_FS_CONFIG);
     await symlink(DEFAULT_FS_CONFIG, account_config_path,
-        path.join(NC_CORETEST_CONFIG_DIR_PATH, root_accounts_dir_path, config.ANONYMOUS_ACCOUNT_NAME + ".symlink"));
+        path.join(NC_CORETEST_CONFIG_DIR_PATH, root_accounts_dir_path, config.ANONYMOUS_ACCOUNT_NAME,
+            config.ANONYMOUS_ACCOUNT_NAME + ".symlink"));
     console.log('Anonymous account created');
 }
 
@@ -2116,7 +2124,7 @@ async function delete_anonymous_account(accounts_dir_path, root_accounts_dir_pat
         return;
     }
     await native_fs_utils.delete_config_file(DEFAULT_FS_CONFIG, accounts_dir_path, account_config_path);
-    fs.unlinkSync(path.join(NC_CORETEST_CONFIG_DIR_PATH, root_accounts_dir_path,
+    fs.unlinkSync(path.join(NC_CORETEST_CONFIG_DIR_PATH, root_accounts_dir_path, config.ANONYMOUS_ACCOUNT_NAME,
         config.ANONYMOUS_ACCOUNT_NAME + ".symlink"));
     console.log('Anonymous account Deleted');
 }

@@ -33,6 +33,7 @@ const global_config = Object.seal({
     access_keys_dir_name: '/' + CONFIG_SUBDIRS.ACCESS_KEYS,
     accounts_dir_name: '/' + CONFIG_SUBDIRS.ACCOUNTS,
     accounts_dir_relative_path: '../' + CONFIG_SUBDIRS.ACCOUNTS + '/',
+    accounts_dir_relative_path_double: '../../' + CONFIG_SUBDIRS.ACCOUNTS + '/',
     root_accounts_dir_name: '/' + CONFIG_SUBDIRS.ROOT_ACCOUNTS,
     // will be defined during runtime (type is string)
     config_root: '',
@@ -400,7 +401,7 @@ async function fetch_existing_account_data(action, target, decrypt_secret_key) {
     let source;
     try {
         const account_path = target.name ?
-            get_symlink_config_file_path(global_config.root_accounts_dir_path, target.name) :
+            get_symlink_config_file_path(global_config.root_accounts_dir_path, target.name, target.name) :
             get_symlink_config_file_path(global_config.access_keys_dir_path, target.access_keys[0].access_key);
         source = await get_config_data(global_config.config_root_backend, account_path, true);
         if (decrypt_secret_key) source.access_keys = await nc_mkm.decrypt_access_keys(source);
@@ -439,7 +440,7 @@ async function add_account(data) {
     const fs_context = native_fs_utils.get_process_fs_context(global_config.config_root_backend);
     const access_key = has_access_keys(data.access_keys) ? data.access_keys[0].access_key : undefined;
     const account_config_access_key_path = get_symlink_config_file_path(global_config.access_keys_dir_path, access_key);
-    const root_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name);
+    const root_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name, data.name);
 
     const name_exists = await native_fs_utils.is_path_exists(fs_context, root_account_config_path);
     const access_key_exists = await native_fs_utils.is_path_exists(fs_context, account_config_access_key_path, true);
@@ -449,9 +450,11 @@ async function add_account(data) {
         const err_code = name_exists ? ManageCLIError.AccountNameAlreadyExists : ManageCLIError.AccountAccessKeyAlreadyExists;
         throw_cli_error(err_code, event_arg, {account: event_arg});
     }
+
     data._id = mongo_utils.mongoObjectId();
     const account_config_path = get_config_file_path(global_config.accounts_dir_path, data._id);
     const account_config_relative_path = get_config_file_path(global_config.accounts_dir_relative_path, data._id);
+    const account_config_relative_path_double = get_config_file_path(global_config.accounts_dir_relative_path_double, data._id);
     const encrypted_account = await nc_mkm.encrypt_access_keys(data);
     data.master_key_id = encrypted_account.master_key_id;
     const encrypted_data = JSON.stringify(encrypted_account);
@@ -462,8 +465,9 @@ async function add_account(data) {
     const account = encrypted_data ? JSON.parse(encrypted_data) : data;
     nsfs_schema_utils.validate_account_schema(account);
     await native_fs_utils.create_config_file(fs_context, global_config.accounts_dir_path, account_config_path, JSON.stringify(account));
-    await native_fs_utils._create_path(global_config.root_accounts_dir_path, fs_context, config.BASE_MODE_CONFIG_DIR);
-    await nb_native().fs.symlink(fs_context, account_config_relative_path, root_account_config_path);
+    await native_fs_utils._create_path(path.join(global_config.root_accounts_dir_path, data.name),
+        fs_context, config.BASE_MODE_CONFIG_DIR);
+    await nb_native().fs.symlink(fs_context, account_config_relative_path_double, root_account_config_path);
     if (has_access_keys(data.access_keys)) {
         await native_fs_utils._create_path(global_config.access_keys_dir_path, fs_context, config.BASE_MODE_CONFIG_DIR);
         await nb_native().fs.symlink(fs_context, account_config_relative_path, account_config_access_key_path);
@@ -510,10 +514,11 @@ async function update_account(data, is_flag_iam_operate_on_root_account) {
         secret_key: data.access_keys[0].secret_key,
     };
     data.access_keys[0].access_key = data.new_access_key || cur_access_key;
-    const cur_root_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, cur_name);
-    const new_root_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name);
+    const cur_root_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, cur_name, cur_name);
+    const new_root_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, new_name, new_name);
     const new_account_config_path = get_config_file_path(global_config.accounts_dir_path, data._id);
     const new_account_relative_config_path = get_config_file_path(global_config.accounts_dir_relative_path, data._id);
+    const new_account_relative_config_path_double = get_config_file_path(global_config.accounts_dir_relative_path_double, data._id);
     const cur_access_key_config_path = get_symlink_config_file_path(global_config.access_keys_dir_path, cur_access_key);
     const new_access_key_config_path = get_symlink_config_file_path(global_config.access_keys_dir_path, data.access_keys[0].access_key);
     const name_exists = update_name && await native_fs_utils.is_path_exists(fs_context, new_root_account_config_path);
@@ -535,7 +540,10 @@ async function update_account(data, is_flag_iam_operate_on_root_account) {
     if (update_name) {
         //write_stdout_response(ManageCLIResponse.AccountUpdated, "update_name 2 = " + update_name);
         await nb_native().fs.unlink(fs_context, cur_root_account_config_path);
-        await nb_native().fs.symlink(fs_context, new_account_relative_config_path, new_root_account_config_path);
+        await nb_native().fs.rename(fs_context,
+            path.join(global_config.root_accounts_dir_path, cur_name),
+            path.join(global_config.root_accounts_dir_path, new_name));
+        await nb_native().fs.symlink(fs_context, new_account_relative_config_path_double, new_root_account_config_path);
     }
     await native_fs_utils.update_config_file(fs_context, global_config.accounts_dir_path, new_account_config_path, encrypted_data);
     //}
@@ -559,8 +567,8 @@ async function delete_account(data) {
             await nb_native().fs.unlink(fs_context, access_key_config_path);
         }
     }
-    const root_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name);
-    await nb_native().fs.unlink(fs_context, root_account_config_path);
+    const root_account_config_path = path.join(global_config.root_accounts_dir_path, data.name);
+    await native_fs_utils.folder_delete(root_account_config_path, fs_context);
     write_stdout_response(ManageCLIResponse.AccountDeleted, '', {account: data.name});
 }
 
@@ -569,7 +577,7 @@ async function get_account_status(data, show_secrets) {
     try {
         const account_path = _.isUndefined(data.name) ?
             get_symlink_config_file_path(global_config.access_keys_dir_path, data.access_keys[0].access_key) :
-            get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name);
+            get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name, data.name);
         const config_data = await get_config_data(global_config.config_root_backend, account_path, show_secrets);
         if (config_data.access_keys) config_data.access_keys = await nc_mkm.decrypt_access_keys(config_data);
         write_stdout_response(ManageCLIResponse.AccountStatus, config_data);
@@ -597,7 +605,7 @@ async function manage_account_operations(action, data, show_secrets, user_input)
         const account_filters = _.pick(user_input, LIST_ACCOUNT_FILTERS);
         const wide = get_boolean_or_string_value(user_input.wide);
         const accounts = await list_config_files(TYPES.ACCOUNT, global_config.root_accounts_dir_path, wide,
-            show_secrets, account_filters, true);
+            show_secrets, account_filters);
         write_stdout_response(ManageCLIResponse.AccountList, accounts);
     } else {
         // we should not get here (we check it before)
@@ -661,18 +669,19 @@ function filter_bucket(bucket, filters) {
  * @param {boolean} [wide]
  * @param {boolean} [show_secrets]
  * @param {object} [filters]
- * @param {boolean} [is_symlink]
  */
-async function list_config_files(type, config_path, wide, show_secrets, filters, is_symlink) {
+async function list_config_files(type, config_path, wide, show_secrets, filters) {
     const fs_context = native_fs_utils.get_process_fs_context(global_config.config_root_backend);
     const entries = await nb_native().fs.readdir(fs_context, config_path);
     const should_filter = Object.keys(filters).length > 0;
-    const suffix = is_symlink ? '.symlink' : '.json';
+    const suffix = type === TYPES.ACCOUNT ? '' : '.json';
 
     let config_files_list = await P.map_with_concurrency(10, entries, async entry => {
         if (entry.name.endsWith(suffix)) {
             if (wide || should_filter) {
-                const full_path = path.join(config_path, entry.name);
+                const full_path = type === TYPES.ACCOUNT ?
+                    path.join(config_path, entry.name, entry.name + ".symlink") :
+                    path.join(config_path, entry.name);
                 const data = await get_config_data_if_exists(global_config.config_root_backend, full_path, show_secrets || should_filter);
                 if (!data) return undefined;
                 // decryption causing mkm initalization
@@ -680,9 +689,9 @@ async function list_config_files(type, config_path, wide, show_secrets, filters,
                 if (data.access_keys && show_secrets) data.access_keys = await nc_mkm.decrypt_access_keys(data);
                 if (should_filter && !filter_list_item(type, data, filters)) return undefined;
                 // remove secrets on !show_secrets && should filter
-                return wide ? _.omit(data, show_secrets ? [] : ['access_keys']) : { name: entry.name.slice(0, entry.name.indexOf(suffix)) };
+                return wide ? _.omit(data, show_secrets ? [] : ['access_keys']) : { name: data.name };
             } else {
-                return { name: entry.name.slice(0, entry.name.indexOf(suffix)) };
+                return { name: suffix.length > 0 ? entry.name.slice(0, entry.name.indexOf(suffix)) : entry.name };
             }
         }
     });
