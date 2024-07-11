@@ -70,8 +70,12 @@ function get_config_file_path(config_type_path, file_name) {
     return path.join(config_type_path, file_name + '.json');
 }
 
-function get_symlink_config_file_path(config_type_path, file_name) {
-    return path.join(config_type_path, file_name + '.symlink');
+function get_symlink_config_file_path(config_type_path, file_name, root_account) {
+    if (root_account) {
+        return path.join(config_type_path, root_account, file_name + '.symlink');
+    } else {
+        return path.join(config_type_path, file_name + '.symlink');
+    }
 }
 
 /**
@@ -116,7 +120,7 @@ async function get_config_data_if_exists(config_root_backend, config_file_path, 
  */
 async function get_bucket_owner_account(global_config, dir_path, account_identifier, is_symlink) {
     const account_config_path = is_symlink ?
-        get_symlink_config_file_path(dir_path, account_identifier) :
+        get_symlink_config_file_path(dir_path, account_identifier, account_identifier) :
         get_config_file_path(dir_path, account_identifier);
     try {
         const account = await get_config_data(global_config.config_root_backend, account_config_path);

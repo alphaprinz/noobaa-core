@@ -71,7 +71,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
     }
 
     _get_root_account_config_path(name) {
-        return path.join(this.root_accounts_dir, name + '.symlink');
+        return path.join(this.root_accounts_dir, name, name + '.symlink');
     }
 
     _get_account_config_path(id) {
@@ -692,7 +692,8 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             bucket_to_validate);
             nsfs_schema_utils.validate_bucket_schema(bucket_to_validate);
             await bucket_policy_utils.validate_s3_policy(bucket.s3_policy, bucket.name,
-                async principal => await get_account_by_principal(this.fs_context, this.accounts_dir, this.root_accounts_dir, principal)
+                async principal => await get_account_by_principal(this.fs_context, this.accounts_dir,
+                    this.root_accounts_dir, principal.unwrap())
             );
             const update_bucket = JSON.stringify(bucket);
             await nb_native().fs.writeFile(
