@@ -723,7 +723,6 @@ class AccountSpaceFS {
         const is_user_account_exists = await native_fs_utils.is_path_exists(this.fs_context,
             account_config_path);
         if (!is_user_account_exists) {
-            console.log("account_config_path = ", account_config_path);
             dbg.error(`AccountSpaceFS.${action} username does not exist`, username);
             const message_with_details = `The user with name ${username} cannot be found.`;
             const { code, http_code, type } = IamError.NoSuchEntity;

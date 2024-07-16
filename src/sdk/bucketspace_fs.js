@@ -778,8 +778,6 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             );
         }
 
-        console.log("res = ", result);
-
         if (result === 'DENY') return false;
         return is_owner || result === 'ALLOW';
     }

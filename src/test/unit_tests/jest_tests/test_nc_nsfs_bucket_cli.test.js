@@ -847,7 +847,6 @@ async function exec_manage_cli(type, action, options) {
     }
     flags = flags.trim();
     const command = `node src/cmd/manage_nsfs ${type} ${action} ${flags}`;
-    console.log("command = ", command);
 
     let res;
     try {

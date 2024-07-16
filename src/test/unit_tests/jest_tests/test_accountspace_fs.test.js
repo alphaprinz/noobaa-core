@@ -825,8 +825,6 @@ describe('Accountspace_FS tests', () => {
                     // same params
                     await accountspace_fs.create_access_key(params, account_sdk);
                     // create a user with the root account
-                    //await require('node:timers/promises').setTimeout(500000);
-                    console.log("account_sdk.requesting_account.name.unwrap() = ", account_sdk.requesting_account.name.unwrap());
                     const account_config_file = await read_config_file(
                         path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                         username_for_root_account, true);
@@ -1343,11 +1341,10 @@ describe('Accountspace_FS tests', () => {
                     await accountspace_fs.get_access_key_last_used(params, account_sdk);
                     throw new NoErrorThrownError();
                 } catch (err) {
-                    //await require('node:timers/promises').setTimeout(500000);
                     expect(err).toBeInstanceOf(IamError);
                     expect(err).toHaveProperty('code', IamError.NoSuchEntity.code);
                 }
-            }, 99999999);
+            });
 
             it('get_access_key_last_used should return user access key params (requesting account is root accounts manager requested account is root account)', async function() {
                 const username = dummy_user_root_account.username;
@@ -1781,7 +1778,6 @@ describe('Accountspace_FS tests', () => {
             it('delete_access_key should not return any param (requesting account is root accounts manager requested account is root account)', async function() {
                 const username = dummy_user_root_account.username;
                 const account_sdk = make_dummy_account_sdk_root_accounts_manager();
-                //await require('node:timers/promises').setTimeout(500000);
                 let user_account_config_file = await read_config_file(
                     path.join(accountspace_fs.root_accounts_dir, username),
                     username, true);
