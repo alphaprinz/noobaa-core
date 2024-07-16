@@ -1975,7 +1975,6 @@ async function exec_manage_cli(type, action, options) {
     } catch (e) {
         res = e;
     }
-    console.log("res = ", res);
     return res;
 }
 
