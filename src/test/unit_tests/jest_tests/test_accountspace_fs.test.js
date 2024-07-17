@@ -89,20 +89,20 @@ const root_user_root_accounts_manager = {
 };
 
 // I'm only interested in the requesting_account field
-function make_dummy_account_sdk(name = root_user_account.name) {
+function make_dummy_account_sdk(root_account = root_user_account) {
     return {
             requesting_account: {
-                _id: root_user_account._id,
-                name: new SensitiveString(name),
-                email: new SensitiveString(root_user_account.email),
-                creation_date: root_user_account.creation_date,
+                _id: root_account._id,
+                name: new SensitiveString(root_account.name),
+                email: new SensitiveString(root_account.email),
+                creation_date: root_account.creation_date,
                 access_keys: [{
-                    access_key: new SensitiveString(root_user_account.access_keys[0].access_key),
-                    secret_key: new SensitiveString(root_user_account.access_keys[0].secret_key)
+                    access_key: new SensitiveString(root_account.access_keys[0].access_key),
+                    secret_key: new SensitiveString(root_account.access_keys[0].secret_key)
                 }],
-                nsfs_account_config: root_user_account.nsfs_account_config,
-                allow_bucket_creation: root_user_account.allow_bucket_creation,
-                master_key_id: root_user_account.master_key_id,
+                nsfs_account_config: root_account.nsfs_account_config,
+                allow_bucket_creation: root_account.allow_bucket_creation,
+                master_key_id: root_account.master_key_id,
             },
     };
 }
@@ -162,11 +162,11 @@ function make_dummy_account_sdk_not_for_creating_resources() {
 }
 
 // I'm only interested in the requesting_account field
-function make_dummy_account_sdk_root_accounts_manager(name = root_user_root_accounts_manager.name) {
+function make_dummy_account_sdk_root_accounts_manager() {
     return {
             requesting_account: {
                 _id: root_user_root_accounts_manager._id,
-                name: new SensitiveString(name),
+                name: new SensitiveString(root_user_root_accounts_manager.name),
                 email: new SensitiveString(root_user_root_accounts_manager.email),
                 creation_date: root_user_root_accounts_manager.creation_date,
                 access_keys: [{
@@ -203,7 +203,7 @@ describe('Accountspace_FS tests', () => {
             await fs.promises.chmod(account_path, 0o600);
             await fs.promises.symlink(account_path, account_access_path);
             await fs_utils.create_fresh_path(path.join(accountspace_fs.root_accounts_dir, account.name));
-            const root_account_path = accountspace_fs._get_root_account_config_path(account.name, account.name);
+            const root_account_path = accountspace_fs._get_account_config_path_by_root_name(account.name, account.name);
             await fs.promises.symlink(account_path, root_account_path);
         }
     });
@@ -443,7 +443,7 @@ describe('Accountspace_FS tests', () => {
                     const params = {
                         username: root_user_root_accounts_manager.name,
                     };
-                    const account_sdk = make_dummy_account_sdk();
+                    const account_sdk = make_dummy_account_sdk(root_user_root_accounts_manager);
                     await accountspace_fs.get_user(params, account_sdk);
                     throw new NoErrorThrownError();
                 } catch (err) {
@@ -818,7 +818,7 @@ describe('Accountspace_FS tests', () => {
                 };
                 let account_sdk;
                 try {
-                    account_sdk = make_dummy_account_sdk_root_accounts_manager(username_for_root_account);
+                    account_sdk = make_dummy_account_sdk_root_accounts_manager();
                     // create the root account
                     await accountspace_fs.create_user(params, account_sdk);
                     // create the root account access key
@@ -859,7 +859,7 @@ describe('Accountspace_FS tests', () => {
                 };
                 let account_sdk;
                 try {
-                    account_sdk = make_dummy_account_sdk_root_accounts_manager(username_for_root_account);
+                    account_sdk = make_dummy_account_sdk_root_accounts_manager();
                     // create the root account
                     await accountspace_fs.create_user(params, account_sdk);
                     // create a dummy bucket
@@ -985,13 +985,16 @@ describe('Accountspace_FS tests', () => {
             await fs.promises.chown(new_buckets_path1,
                 root_user_root_accounts_manager.nsfs_account_config.uid, root_user_root_accounts_manager.nsfs_account_config.gid);
 
-            for (const account of [root_user_root_accounts_manager]) {
+            for (const account of [root_user_root_accounts_manager, root_user_account, root_user_account2]) {
+                await fs_utils.create_fresh_path(path.join(accountspace_fs.root_accounts_dir, account.name));
                 const account_path = accountspace_fs._get_account_config_path(account._id);
                 // assuming that the root account has only 1 access key in the 0 index
                 const account_access_path = accountspace_fs._get_access_keys_config_path(account.access_keys[0].access_key);
+                const root_account_path = accountspace_fs._get_account_config_path_by_root_name(account.name, account.name);
                 await fs.promises.writeFile(account_path, JSON.stringify(account));
                 await fs.promises.chmod(account_path, 0o600);
                 await fs.promises.symlink(account_path, account_access_path);
+                await fs.promises.symlink(account_path, root_account_path);
             }
         });
         afterAll(async () => {
@@ -1034,7 +1037,7 @@ describe('Accountspace_FS tests', () => {
                     const params = {
                         username: dummy_user1.username,
                     };
-                    const account_sdk = make_dummy_account_sdk_not_for_creating_resources();
+                    const account_sdk = make_dummy_account_sdk();
                     await accountspace_fs.create_access_key(params, account_sdk);
                     throw new NoErrorThrownError();
                 } catch (err) {
@@ -1120,8 +1123,8 @@ describe('Accountspace_FS tests', () => {
                 }
             });
 
-            it('create_access_key2 should return user access key params (requester is an IAM user)', async function() {
-                let account_sdk = make_dummy_account_sdk(dummy_username5);
+            it('create_access_key should return user access key params (requester is an IAM user)', async function() {
+                let account_sdk = make_dummy_account_sdk();
                 // create the user
                 const params_for_user_creation = {
                     username: dummy_username5,
@@ -1147,7 +1150,7 @@ describe('Accountspace_FS tests', () => {
                 expect(res.secret_key).toBeDefined();
 
                 user_account_config_file = await read_config_file(
-                    path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
+                    path.join(accountspace_fs.root_accounts_dir, root_user_account.name),
                     dummy_username5, true);
                 expect(user_account_config_file.name).toBe(dummy_username5);
                 expect(user_account_config_file.access_keys).toBeDefined();
@@ -1167,7 +1170,7 @@ describe('Accountspace_FS tests', () => {
                     // both IAM users are under the same root account (owner property)
                     let account_sdk = make_dummy_account_sdk();
                     const user_account_config_file = await read_config_file(
-                        path.join(accountspace_fs.root_accounts_dir, dummy_username5),
+                        path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                         dummy_username5, true);
                     // create the second access key
                     // by the IAM user
@@ -1186,7 +1189,7 @@ describe('Accountspace_FS tests', () => {
 
             it('create_access_key should return user access key params (requesting account is root accounts manager to create access keys for root account user)', async function() {
                 const username = dummy_user_root_account.username;
-                const account_sdk = make_dummy_account_sdk_root_accounts_manager(username);
+                const account_sdk = make_dummy_account_sdk_root_accounts_manager();
                 // create the user
                 const params = {
                     username: username,
@@ -1218,7 +1221,7 @@ describe('Accountspace_FS tests', () => {
                 try {
                     // user already created (IAM user)
                     // create the access key
-                    const account_sdk = make_dummy_account_sdk_root_accounts_manager(root_user_account.name);
+                    const account_sdk = make_dummy_account_sdk_root_accounts_manager();
                     const params = {
                         username: dummy_username1,
                     };
@@ -1226,7 +1229,7 @@ describe('Accountspace_FS tests', () => {
                     throw new NoErrorThrownError();
                 } catch (err) {
                     expect(err).toBeInstanceOf(IamError);
-                    expect(err).toHaveProperty('code', IamError.NotAuthorized.code);
+                    expect(err).toHaveProperty('code', IamError.NoSuchEntity.code);
                 }
             });
         });
@@ -1323,16 +1326,14 @@ describe('Accountspace_FS tests', () => {
 
             it('get_access_key_last_used return an error if user is not owned by the root account (requester is an IAM user)', async function() {
                 try {
-                    let account_sdk = make_dummy_account_sdk();
-                    const root_name = account_sdk.requesting_account.name.unwrap();
                     const requester_account_config_file = await read_config_file(
-                        path.join(accountspace_fs.root_accounts_dir, root_name),
+                        path.join(accountspace_fs.root_accounts_dir, root_user_account.name),
                         dummy_user2.username, true);
                     // by the IAM user
-                    account_sdk = make_dummy_account_sdk_created_from_another_account(requester_account_config_file,
+                    const account_sdk = make_dummy_account_sdk_created_from_another_account(requester_account_config_file,
                         requester_account_config_file.owner);
                     const user_account_config_file = await read_config_file(
-                        path.join(accountspace_fs.root_accounts_dir, dummy_user_root_account.username),
+                        path.join(accountspace_fs.root_accounts_dir, root_user_root_accounts_manager.name),
                         dummy_user_root_account.username, true);
                     const access_key = user_account_config_file.access_keys[0].access_key;
                     const params = {
@@ -1348,7 +1349,7 @@ describe('Accountspace_FS tests', () => {
 
             it('get_access_key_last_used should return user access key params (requesting account is root accounts manager requested account is root account)', async function() {
                 const username = dummy_user_root_account.username;
-                const account_sdk = make_dummy_account_sdk_root_accounts_manager(username);
+                const account_sdk = make_dummy_account_sdk_root_accounts_manager();
                 // user was already created
                 // create the access key
                 const params_for_access_key_creation = {
@@ -1441,7 +1442,7 @@ describe('Accountspace_FS tests', () => {
                 }
             });
 
-            it('update_access_key should not return an error if access key is on another root account', async function() {
+            it('update_access_key should return an error if access key is on another root account', async function() {
                 try {
                     const account_sdk = make_dummy_account_sdk_not_for_creating_resources();
                     const user_account_config_file = await read_config_file(
@@ -1520,9 +1521,9 @@ describe('Accountspace_FS tests', () => {
 
             it('update_access_key should not return any param (requester is an IAM user)', async function() {
                 const dummy_username = dummy_username5;
-                let account_sdk = make_dummy_account_sdk(dummy_username);
+                let account_sdk = make_dummy_account_sdk();
                 let user_account_config_file = await read_config_file(path.join(
-                    accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
+                    accountspace_fs.root_accounts_dir, root_user_account.name),
                     dummy_username, true);
                 // by the IAM user
                 account_sdk = make_dummy_account_sdk_created_from_another_account(user_account_config_file, user_account_config_file.owner);
@@ -1534,7 +1535,7 @@ describe('Accountspace_FS tests', () => {
                 const res = await accountspace_fs.update_access_key(params, account_sdk);
                 expect(res).toBeUndefined();
                 user_account_config_file = await read_config_file(
-                    path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
+                    path.join(accountspace_fs.root_accounts_dir, root_user_account.name),
                     dummy_username, true);
                 expect(user_account_config_file.access_keys[1].deactivated).toBe(true);
             });
@@ -1542,7 +1543,7 @@ describe('Accountspace_FS tests', () => {
             it('update_access_key should return an error if user is not owned by the root account (requester is an IAM user)', async function() {
                 try {
                     // both IAM users are under the same root account (owner property)
-                    let account_sdk = make_dummy_account_sdk(dummy_username5);
+                    let account_sdk = make_dummy_account_sdk();
                     const user_account_config_file = await read_config_file(
                         path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                         dummy_username5, true);
@@ -1566,7 +1567,7 @@ describe('Accountspace_FS tests', () => {
 
             it('update_access_key should not return any param (update status to Inactive) (requesting account is root accounts manager requested account is root account)', async function() {
                 const username = dummy_user_root_account.username;
-                const account_sdk = make_dummy_account_sdk_root_accounts_manager(username);
+                const account_sdk = make_dummy_account_sdk_root_accounts_manager();
                 let user_account_config_file = await read_config_file(
                     path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                     username, true);
@@ -1654,7 +1655,7 @@ describe('Accountspace_FS tests', () => {
             }
         });
 
-            it('delete_access_key should not return an error if access key is on another root account', async function() {
+            it('delete_access_key should return an error if access key is on another root account', async function() {
                 try {
                     const account_sdk = make_dummy_account_sdk_not_for_creating_resources();
                     const user_account_config_file = await read_config_file(
@@ -1732,7 +1733,7 @@ describe('Accountspace_FS tests', () => {
             it('delete_access_key should not return any param (requester is an IAM user)', async function() {
                 let account_sdk = make_dummy_account_sdk();
                 let user_account_config_file = await read_config_file(
-                    path.join(accountspace_fs.root_accounts_dir, dummy_username5),
+                    path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                     dummy_username5, true);
                 // by the IAM user
                 account_sdk = make_dummy_account_sdk_created_from_another_account(user_account_config_file, user_account_config_file.owner);
@@ -1756,7 +1757,7 @@ describe('Accountspace_FS tests', () => {
                     // both IAM users are under the same root account (owner property)
                     let account_sdk = make_dummy_account_sdk();
                     const user_account_config_file = await read_config_file(
-                        path.join(accountspace_fs.root_accounts_dir, dummy_username5),
+                        path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                         dummy_username5, true);
                     const access_key = user_account_config_file.access_keys[0].access_key;
                     // create the second access key
@@ -1779,7 +1780,7 @@ describe('Accountspace_FS tests', () => {
                 const username = dummy_user_root_account.username;
                 const account_sdk = make_dummy_account_sdk_root_accounts_manager();
                 let user_account_config_file = await read_config_file(
-                    path.join(accountspace_fs.root_accounts_dir, username),
+                    path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                     username, true);
                 const access_key = user_account_config_file.access_keys[0].access_key;
                 const params = {
@@ -1789,7 +1790,7 @@ describe('Accountspace_FS tests', () => {
                 const res = await accountspace_fs.delete_access_key(params, account_sdk);
                 expect(res).toBeUndefined();
                 user_account_config_file = await read_config_file(
-                    path.join(accountspace_fs.root_accounts_dir, username),
+                    path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                     username, true);
                 expect(user_account_config_file.access_keys.length).toBe(1);
                 const symlink_config_path = path.join(accountspace_fs.access_keys_dir, access_key + '.symlink');
@@ -1863,10 +1864,10 @@ describe('Accountspace_FS tests', () => {
             it('list_access_keys return array of access_keys and value of is_truncated (requester is an IAM user)', async function() {
                 let account_sdk = make_dummy_account_sdk();
                 const user_account_config_file = await read_config_file(
-                    path.join(accountspace_fs.root_accounts_dir, dummy_username5),
+                    path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                     dummy_username5, true);
                 // by the IAM user
-                account_sdk = make_dummy_account_sdk_created_from_another_account(user_account_config_file, user_account_config_file.owner);
+                account_sdk = make_dummy_account_sdk_created_from_another_account(user_account_config_file, root_user_account._id);
                 const params = {};
                 const res = await accountspace_fs.list_access_keys(params, account_sdk);
                 expect(Array.isArray(res.members)).toBe(true);
@@ -1879,7 +1880,7 @@ describe('Accountspace_FS tests', () => {
                     // both IAM users are under the same root account (owner property)
                     let account_sdk = make_dummy_account_sdk();
                     const user_account_config_file = await read_config_file(
-                        path.join(accountspace_fs.root_accounts_dir, dummy_username5),
+                        path.join(accountspace_fs.root_accounts_dir, account_sdk.requesting_account.name.unwrap()),
                         dummy_username5, true);
                     const access_key = user_account_config_file.access_keys[0].access_key;
                     // create the second access key
@@ -1900,7 +1901,7 @@ describe('Accountspace_FS tests', () => {
 
             it('list_access_keys return array of access_keys and value of is_truncated (requesting account is root accounts manager requested account is root account)', async function() {
                 const username = dummy_user_root_account.username;
-                const account_sdk = make_dummy_account_sdk_root_accounts_manager(username);
+                const account_sdk = make_dummy_account_sdk_root_accounts_manager();
                 const params = {
                     username: username,
                 };

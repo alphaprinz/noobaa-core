@@ -108,7 +108,7 @@ class AccountSpaceFS {
             // GAP - we do not have the user iam_path at this point (error message)
             this._check_if_requesting_account_is_root_account(action, requesting_account,
                 { username: username });
-            const account_config_path = this._get_root_account_config_path(username, requesting_account.name.unwrap());
+            const account_config_path = await this._get_account_config_path_by_requesting_account(requesting_account, username);
             await this._check_if_account_config_file_exists(action, username, account_config_path);
             const account_to_get = await this._get_account_decrypted_data_optional(account_config_path, false);
             this._check_if_requested_account_is_root_account_or_IAM_user(action, requesting_account, account_to_get);
@@ -148,7 +148,7 @@ class AccountSpaceFS {
             // GAP - we do not have the user iam_path at this point (error message)
             this._check_if_requesting_account_is_root_account(action, requesting_account,
                 { username: params.username});
-            const account_config_path = this._get_root_account_config_path(params.username, requesting_account.name.unwrap());
+            const account_config_path = await this._get_account_config_path_by_requesting_account(requesting_account, params.username);
             await this._check_if_account_config_file_exists(action, params.username, account_config_path);
             const requested_account = await this._get_account_decrypted_data_optional(account_config_path, false);
             this._check_if_requested_account_is_root_account_or_IAM_user(action, requesting_account, requested_account);
@@ -161,7 +161,7 @@ class AccountSpaceFS {
                 dbg.log0(`AccountSpaceFS.${action} username was updated, is_username_update`,
                     is_username_update);
                 await this._update_account_config_new_username(action, requested_account._id,
-                    params.username, params.new_username, requesting_account.name.unwrap());
+                    params.username, params.new_username, requesting_account);
                 requested_account.name = params.new_username;
             }
             const requested_account_encrypted = await nc_mkm.encrypt_access_keys(requested_account);
@@ -203,7 +203,8 @@ class AccountSpaceFS {
             // GAP - we do not have the user iam_path at this point (error message)
             this._check_if_requesting_account_is_root_account(action, requesting_account,
                 { username: params.username });
-            const root_account_config_path = this._get_root_account_config_path(params.username, requesting_account.name.unwrap());
+            const root_account_config_path = await
+                this._get_account_config_path_by_requesting_account(requesting_account, params.username);
             await this._check_if_account_config_file_exists(action, params.username, root_account_config_path);
             const account_to_delete = await this._get_account_decrypted_data_optional(root_account_config_path, false);
             this._check_if_requested_account_is_root_account_or_IAM_user(action, requesting_account, account_to_delete);
@@ -265,7 +266,8 @@ class AccountSpaceFS {
             const requester = this._check_if_requesting_account_is_root_account_or_user_om_himself(action,
                 requesting_account, params.username);
             const name_for_access_key = params.username ?? requester.name;
-            const requested_account_config_path = this._get_root_account_config_path(name_for_access_key, requesting_account.name.unwrap());
+            const requested_account_config_path = await this._get_account_config_path_by_requesting_account(
+                requesting_account, name_for_access_key);
             await this._check_if_account_config_file_exists(action, name_for_access_key, requested_account_config_path);
             const requested_account = await this._get_account_decrypted_data_optional(requested_account_config_path, true);
             if (requester.identity === IDENTITY_ENUM.ROOT_ACCOUNT) {
@@ -449,7 +451,8 @@ class AccountSpaceFS {
             const requester = this._check_if_requesting_account_is_root_account_or_user_om_himself(action,
                 requesting_account, params.username);
             const name_for_access_key = params.username ?? requester.name;
-            const requested_account_config_path = this._get_root_account_config_path(name_for_access_key, requesting_account.name.unwrap());
+            const requested_account_config_path = await this._get_account_config_path_by_requesting_account(
+                requesting_account, name_for_access_key);
             await this._check_if_account_config_file_exists(action, name_for_access_key, requested_account_config_path);
             const requested_account = await this._get_account_decrypted_data_optional(requested_account_config_path, false);
             this._check_if_requested_account_same_root_account_as_requesting_account(action,
@@ -487,8 +490,22 @@ class AccountSpaceFS {
         return get_config_file_path(this.accounts_dir, account_id);
      }
 
-     _get_root_account_config_path(account_name, root_name) {
+     _get_account_config_path_by_root_name(account_name, root_name) {
         return get_symlink_config_file_path(this.root_accounts_dir, account_name, root_name);
+     }
+
+     async _get_root_account_name(account) {
+        const root_id = account.owner || account._id;
+        const root_account_path = this._get_account_config_path(root_id);
+        const root_account = await this._get_account_decrypted_data_optional(root_account_path, false);
+        return root_account.name;
+     }
+
+     async _get_account_config_path_by_requesting_account(requesting_account, requested_account_name) {
+        const root_account_name = await this._get_root_account_name(requesting_account);
+        const account_path = this._get_account_config_path_by_root_name(requested_account_name, root_account_name);
+        return account_path;
+
      }
 
      _get_access_keys_config_path(access_key) {
@@ -694,7 +711,7 @@ class AccountSpaceFS {
     }
 
     async _check_username_already_exists(action, username, root_name) {
-        const account_config_path = this._get_root_account_config_path(username, root_name);
+        const account_config_path = this._get_account_config_path_by_root_name(username, root_name);
         const name_exists = await native_fs_utils.is_path_exists(this.fs_context,
             account_config_path);
         if (name_exists) {
@@ -807,11 +824,12 @@ class AccountSpaceFS {
         await nb_native().fs.symlink(this.fs_context, account_config_relative_path, symlink_path);
     }
 
-    async _update_account_config_new_username(action, user_id, old_username, new_username, root_name) {
-        await this._check_username_already_exists(action, new_username, root_name);
-        const root_account_old_name = get_symlink_config_file_path(this.root_accounts_dir, old_username, root_name);
+    async _update_account_config_new_username(action, user_id, old_username, new_username, requesting_account) {
+        const root_account_name = await this._get_root_account_name(requesting_account);
+        await this._check_username_already_exists(action, new_username, root_account_name);
+        const root_account_old_name = get_symlink_config_file_path(this.root_accounts_dir, old_username, root_account_name);
         await nb_native().fs.unlink(this.fs_context, root_account_old_name);
-        await this._symlink_to_account(user_id, this.root_accounts_dir, new_username, root_name);
+        await this._symlink_to_account(user_id, this.root_accounts_dir, new_username, root_account_name);
     }
 
     _check_root_account_or_user(requesting_account, username) {
