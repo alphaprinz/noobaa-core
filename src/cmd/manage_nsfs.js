@@ -205,6 +205,7 @@ async function get_bucket_status(data) {
             id: account_data._id,
             email: account_data.email
         };
+
         write_stdout_response(ManageCLIResponse.BucketStatus, config_data);
     } catch (err) {
         const err_code = err.code === 'EACCES' ? ManageCLIError.AccessDenied : ManageCLIError.NoSuchBucket;
@@ -538,11 +539,13 @@ async function update_account(data, is_flag_iam_operate_on_root_account) {
     // for validating against the schema we need an object, hence we parse it back to object
     nsfs_schema_utils.validate_account_schema(JSON.parse(encrypted_data));
     if (update_name) {
-        //write_stdout_response(ManageCLIResponse.AccountUpdated, "update_name 2 = " + update_name);
+        //remove the current by-name symlink in root_account dir
         await nb_native().fs.unlink(fs_context, cur_root_account_config_path);
+        //change the name of the root account dir.
         await nb_native().fs.rename(fs_context,
             path.join(global_config.root_accounts_dir_path, cur_name),
             path.join(global_config.root_accounts_dir_path, new_name));
+        //re-create the by-name symlink the the updated root account dir
         await nb_native().fs.symlink(fs_context, new_account_relative_config_path_double, new_root_account_config_path);
     }
     await native_fs_utils.update_config_file(fs_context, global_config.accounts_dir_path, new_account_config_path, encrypted_data);

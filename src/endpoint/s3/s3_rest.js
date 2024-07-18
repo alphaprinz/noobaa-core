@@ -231,9 +231,12 @@ async function authorize_request_policy(req) {
     const account = req.object_sdk.requesting_account;
     const account_identifier_name = req.object_sdk.nsfs_config_root ? account.name.unwrap() : account.email.unwrap();
     const account_identifier_id = req.object_sdk.nsfs_config_root ? account._id : undefined;
+    //In old buckets (until 5.17), system_owner is account name (sensitive string).
+    //In new buckets (since 5.18), system_owner is account id (string).
+    const system_owner_equatable = system_owner.unwrap ? system_owner.unwrap() : system_owner;
     const is_system_owner =
-        (account_identifier_name === system_owner.unwrap()) ||
-        (account_identifier_id && account_identifier_id === system_owner.unwrap());
+        (account_identifier_name === system_owner_equatable) ||
+        (account_identifier_id && account_identifier_id === system_owner_equatable);
 
     // @TODO: System owner as a construct should be removed - Temporary
     if (is_system_owner) return;

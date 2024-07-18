@@ -158,7 +158,7 @@ class AccountSpaceFS {
                 params.new_username !== params.username;
             if (!_.isUndefined(params.new_iam_path)) requested_account.iam_path = params.new_iam_path;
             if (is_username_update) {
-                dbg.log0(`AccountSpaceFS.${action} username was updated, is_username_update`,
+                dbg.log1(`AccountSpaceFS.${action} username was updated, is_username_update`,
                     is_username_update);
                 await this._update_account_config_new_username(action, requested_account._id,
                     params.username, params.new_username, requesting_account);
@@ -213,6 +213,10 @@ class AccountSpaceFS {
             await native_fs_utils.delete_config_file(this.fs_context, this.accounts_dir,
                 this._get_account_config_path(account_to_delete._id));
             await nb_native().fs.unlink(this.fs_context, root_account_config_path);
+            if (this._check_root_account(account_to_delete)) {
+                //delete directory of root account (it's empty now)
+                await native_fs_utils.folder_delete(path.join(this.root_accounts_dir, account_to_delete.name), this.fs_context);
+            }
         } catch (err) {
             dbg.error(`AccountSpaceFS.${action} error`, err);
             throw native_fs_utils.translate_error_codes(err, native_fs_utils.entity_enum.USER);
@@ -502,14 +506,20 @@ class AccountSpaceFS {
      }
 
      async _get_account_config_path_by_requesting_account(requesting_account, requested_account_name) {
-        const root_account_name = await this._get_root_account_name(requesting_account);
+        let root_account_name;
+        if (requesting_account.iam_operate_on_root_account) {
+            //root account manager only operates on the root account that was requested.
+            root_account_name = requested_account_name;
+        } else {
+            root_account_name = await this._get_root_account_name(requesting_account);
+        }
+
         const account_path = this._get_account_config_path_by_root_name(requested_account_name, root_account_name);
         return account_path;
-
      }
 
      _get_access_keys_config_path(access_key) {
-        return get_symlink_config_file_path(this.access_keys_dir, access_key);
+        return get_symlink_config_file_path(this.access_keys_dir, access_key, undefined);
      }
 
      async _get_account_decrypted_data_optional(account_path, should_decrypt_secret_key) {
@@ -731,8 +741,12 @@ class AccountSpaceFS {
         const account_config_path = this._get_account_config_path(created_account._id);
         await native_fs_utils.create_config_file(this.fs_context, this.accounts_dir,
             account_config_path, new_account_string);
-        await native_fs_utils._create_path(path.join(this.root_accounts_dir, requesting_account.name.unwrap()), this.fs_context);
-        await this._symlink_to_account(created_account._id, this.root_accounts_dir, params.username, requesting_account.name.unwrap());
+        //for account manager, create a new root user. Otherwise, root is the requesting account. 
+        const root_account_dir = requesting_account.iam_operate_on_root_account ? params.username : requesting_account.name.unwrap();
+        //make sure root directory exists
+        await native_fs_utils._create_path(path.join(this.root_accounts_dir, root_account_dir), this.fs_context);
+        //symlink from by-name account to by-id account json
+        await this._symlink_to_account(created_account._id, this.root_accounts_dir, params.username, root_account_dir);
         return created_account;
     }
 

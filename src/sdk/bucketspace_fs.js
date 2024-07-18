@@ -179,7 +179,6 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             };
 
             bucket.name = new SensitiveString(bucket.name);
-            bucket.system_owner = new SensitiveString(bucket.system_owner);
             bucket.bucket_owner = new SensitiveString(account.name);
             bucket.owner_account = {
                 id: bucket.owner_account,
@@ -741,7 +740,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
         const account_identifier = account._id;
         dbg.log1('has_bucket_action_permission:', bucket.name.unwrap(), account_identifier, bucket.owner_account);
 
-        const is_system_owner = account_identifier === bucket.system_owner.unwrap();
+        const is_system_owner = account_identifier === bucket.system_owner;
 
         // If the system owner account wants to access the bucket, allow it
         if (is_system_owner) return true;
@@ -768,6 +767,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
         );
 
         //we (currently) allow account identified to be both id and name,
+        //so if by-id failed, try also name
         if (result === 'IMPLICIT_DENY') {
             result = await bucket_policy_utils.has_bucket_policy_permission(
                 bucket_policy,
