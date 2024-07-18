@@ -70,10 +70,21 @@ function get_config_file_path(config_type_path, file_name) {
     return path.join(config_type_path, file_name + '.json');
 }
 
-function get_symlink_config_file_path(config_type_path, file_name, root_account) {
-    if (root_account) {
-        return path.join(config_type_path, root_account, file_name + '.symlink');
+/**
+ * Returns path of a symlink, either by access key or account name.
+ * For account name, both account name and root account name are required.
+ *
+ * @param {string} config_type_path either access key dir or root accounts dir
+ * @param {string} file_name name of file, either access key id or account name
+ * @param {string} root_account_name Optinal root account name for by-name symlink
+ * @returns symlink path
+ */
+
+function get_symlink_config_file_path(config_type_path, file_name, root_account_name) {
+    if (root_account_name) {
+        return path.join(config_type_path, root_account_name, file_name + '.symlink');
     } else {
+        //access key case
         return path.join(config_type_path, file_name + '.symlink');
     }
 }
@@ -114,7 +125,7 @@ async function get_config_data_if_exists(config_root_backend, config_file_path, 
  * get_bucket_owner_account will return the account of the bucket_owner
  * otherwise it would throw an error
  * @param {Object} global_config
- * @param {string} dir_path directory with account file
+ * @param {string} dir_path directory with account file (either accounts, root_accounts or access_keys)
  * @param {string} account_identifier account file name, either name or id
  * @param {boolean} is_symlink whether while is symlink or not. Name -> true, id -> false/undef
  */

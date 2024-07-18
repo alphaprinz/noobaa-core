@@ -433,7 +433,6 @@ async function validate_account_args(global_config, data, action, is_flag_iam_op
         }
     }
     if (action === ACTIONS.DELETE) {
-<<<<<<< HEAD
         await validate_account_resources_before_deletion(global_config, data);
     }
 }
@@ -447,13 +446,10 @@ async function validate_account_args(global_config, data, action, is_flag_iam_op
  * @param {object} data
  */
 async function validate_account_resources_before_deletion(global_config, data) {
-    await validate_account_not_owns_buckets(global_config, data.name);
+    await validate_account_not_owns_buckets(global_config, data);
     // If it is root account (not owned by other account) then we check that it doesn't owns IAM accounts
     if (data.owner === undefined) {
         await check_if_root_account_does_not_have_IAM_users(global_config, data, ACTIONS.DELETE);
-=======
-        await validate_delete_account(global_config, data._id);
->>>>>>> d0b230963 (NC | account by id | global_config merge fix)
     }
 }
 
@@ -486,9 +482,9 @@ function _validate_access_keys(access_key, secret_key) {
  * validate_delete_account will check if the account has at least one bucket
  * in case it finds one, it would throw an error
  * @param {object} global_config
- * @param {string} account_id
+ * @param {object} account
  */
-async function validate_account_not_owns_buckets(global_config, account_id) {
+async function validate_account_not_owns_buckets(global_config, account) {
     const fs_context = native_fs_utils.get_process_fs_context(global_config.config_root_backend);
     const entries = await nb_native().fs.readdir(fs_context, global_config.buckets_dir_path);
     let data;
@@ -496,8 +492,8 @@ async function validate_account_not_owns_buckets(global_config, account_id) {
         if (entry.name.endsWith('.json')) {
             const full_path = path.join(global_config.buckets_dir_path, entry.name);
             data = await get_config_data_if_exists(global_config.config_root_backend, full_path);
-            if (data && data.owner_account === account_id) {
-                const detail_msg = `Account ${data.name} has bucket ${data.name}`;
+            if (data && data.owner_account === account._id) {
+                const detail_msg = `Account ${account.name} has bucket ${data.name}`;
                 throw_cli_error(ManageCLIError.AccountDeleteForbiddenHasBuckets, detail_msg);
             }
             return data;
