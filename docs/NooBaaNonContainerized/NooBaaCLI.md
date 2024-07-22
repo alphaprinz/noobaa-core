@@ -63,14 +63,20 @@ The `account add` command is used to create a new account with customizable opti
 
 #### Usage
 ```sh
-noobaa-cli account add --name <account_name> --uid <uid> --gid <gid> [--user]
+noobaa-cli account add --name <root_account_name> --uid <uid> --gid <gid> [--user]
 [--new_buckets_path][--access_key][--secret_key][--fs_backend]
 [--allow_bucket_creation][--force_md5_etag][--anonymous][--from_file][--iam_operate_on_root_account]
 ```
 #### Flags -
 - `name` (Required)
     - Type: String
-    - Description: Specifies the name of the new account.
+    - Description: Specifies the name of the root account.
+    If creating a iam account, specify the name of the new iam account with --iam_name param.
+
+- `iam_name`
+    - Type: String
+    - Description: If creating a new iam account, specifies the name of the new iam account.
+    The new iam account belongs to the root account specified with --name param.
 
 - `uid` (Required)
     - Type: Number
@@ -127,14 +133,20 @@ The `account update` command is used to update an existing account with customiz
 
 #### Usage
 ```sh
-noobaa-cli account update --name <account_name> [--new_name][--uid][--gid][--user]
+noobaa-cli account update --name <root_account_name> [--new_name][--uid][--gid][--user]
 [--new_buckets_path][--access_key][--secret_key][--regenerate][--fs_backend]
 [--allow_bucket_creation][--force_md5_etag][--anonymous][--iam_operate_on_root_account]
 ```
 #### Flags -
 - `name` (Required)
     - Type: String
-    - Description: Specifies the name of the account to be updated.
+    - Description: Specifies the name of the root account to be updated.
+    If updating an iam account, specify its name with --iam_name param.
+
+- `iam_name`
+    - Type: String
+    - Description: If updating an iam account, specifies the name of the iam account to be updated.
+    The update iam account belongs to the root account specified with --name param.
 
 - `new_name` 
     - Type: String
@@ -195,12 +207,16 @@ The `account status` command is used to print the status of the account.
 
 #### Usage
 ```sh
-noobaa-cli account status --name <account_name> [--access_key][--anonymous][--show_secrets]
+noobaa-cli account status --name <root_account_name> [--access_key][--anonymous][--show_secrets]
 ```
 #### Flags -
 - `name` (Required)
     - Type: String
     - Description: Specifies the name of the account.
+
+- `iam_name`
+    - Type: String
+    - Description: If updating an iam account, specifies the name of the iam account.
 
 - `access_key`
     - Type: String
@@ -260,12 +276,17 @@ The `account delete` command is used to delete an existing account.
 
 #### Usage
 ```sh
-noobaa-cli account delete --name <account_name> [--anonymous]
+noobaa-cli account delete --name <root_account_name> [--anonymous]
 ```
 #### Flags -
 - `name` (Required)
     - Type: String
-    - Description: Specifies the name of the bucket to be deleted.
+    - Description: If deleting a root account, specifies the name of the bucket to be deleted.
+    If deleting an iam account, specifies the name of the root account the iam account belongs to.
+
+- `iam_name`
+    - Type: String
+    - Description: If deleting an iam account, specifies the name of the iam account the be deleted.
 
 - `anonymous`
     - Type: Boolean
