@@ -464,8 +464,12 @@ async function add_account(data, user_input) {
     const account = encrypted_data ? JSON.parse(encrypted_data) : data;
     nsfs_schema_utils.validate_account_schema(account);
     await native_fs_utils.create_config_file(fs_context, global_config.accounts_dir_path, account_config_path, JSON.stringify(account));
-    await native_fs_utils._create_path(path.join(global_config.root_accounts_dir_path, data.name),
-        fs_context, config.BASE_MODE_CONFIG_DIR);
+    //are we adding a root account?
+    if (data.name === user_input.name) {
+        //yes. create its account-by-name dir
+        await native_fs_utils._create_path(path.join(global_config.root_accounts_dir_path, data.name),
+            fs_context, config.BASE_MODE_CONFIG_DIR);
+    }
     await nb_native().fs.symlink(fs_context, account_config_relative_path_double, root_account_config_path);
     if (has_access_keys(data.access_keys)) {
         await native_fs_utils._create_path(global_config.access_keys_dir_path, fs_context, config.BASE_MODE_CONFIG_DIR);
