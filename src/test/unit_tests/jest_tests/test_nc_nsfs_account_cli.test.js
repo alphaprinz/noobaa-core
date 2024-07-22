@@ -380,7 +380,7 @@ describe('manage nsfs cli account flow', () => {
             expect(account.force_md5_etag).toBe(true);
         });
 
-        it('cli2 account add - use flag iam_operate_on_root_account (true)', async function() {
+        it('cli account add - use flag iam_operate_on_root_account (true)', async function() {
             const action = ACTIONS.ADD;
             const { type, name, new_buckets_path, uid, gid } = defaults;
             const iam_operate_on_root_account = 'true';
@@ -640,7 +640,7 @@ describe('manage nsfs cli account flow', () => {
                 assert_account(account_symlink, new_account_details);
             });
 
-            it('cli2 account update name undefined (and back to original name)', async function() {
+            it('cli account update name undefined (and back to original name)', async function() {
                 // set the name as undefined
                 let name = defaults.name;
                 let new_name = 'undefined'; // it is string on purpose
@@ -852,21 +852,10 @@ describe('manage nsfs cli account flow', () => {
 
             it('should fail - cli update account iam_operate_on_root_account true when account owns IAM accounts', async function() {
                 const { name } = defaults;
-                const accounts_details = await read_config_file(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name);
-                const account_id = accounts_details._id;
 
                 const account_name = 'account-to-be-owned';
-                const account_options1 = { config_root, name: account_name, uid: 5555, gid: 5555 };
-                const new_account_id = JSON.parse(await exec_manage_cli(type, ACTIONS.ADD, account_options1)).response.reply._id;
-
-                // update the account to have the property owner
-                // (we use this way because now we don't have the way to create IAM users through the noobaa cli)
-                const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, new_account_id + '.json');
-                const { data } = await nb_native().fs.readFile(DEFAULT_FS_CONFIG, account_config_path);
-                const config_data = JSON.parse(data.toString());
-                config_data.owner = account_id; // just so we can identify this account as IAM user
-                await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ACCOUNTS,
-                    account_config_path, JSON.stringify(config_data));
+                const account_options1 = { config_root, name, iam_name: account_name, uid: 5555, gid: 5555 };
+                await exec_manage_cli(type, ACTIONS.ADD, account_options1);
 
                 // set the value of iam_operate_on_root_account to be true
                 const account_options2 = { config_root, name, iam_operate_on_root_account: true};
@@ -949,27 +938,13 @@ describe('manage nsfs cli account flow', () => {
 
             it('cli update iam account with regenerate (only object access keys in index 0 changes)', async function() {
                 const { name } = defaults;
-                const accounts_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
-                const account_id = accounts_details._id;
 
                 const account_name = 'account-to-be-owned';
-                const account_options1 = { config_root, name: account_name, uid: 5555, gid: 5555 };
+                const account_options1 = { config_root, name: name, iam_name: account_name, uid: 5555, gid: 5555};
                 await exec_manage_cli(type, ACTIONS.ADD, account_options1);
 
-                // update the account to have the property owner
-                // (we use this way because now we don't have the way to create IAM users through the noobaa cli)
-                const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_name + '.json');
-                const { data } = await nb_native().fs.readFile(DEFAULT_FS_CONFIG, account_config_path);
-                const config_data = JSON.parse(data.toString());
-                config_data.owner = account_id; // just so we can identify this account as IAM user
-                // add additional properties to access_keys_object
-                config_data.access_keys[0].creation_date = '2024-07-10T11:26:34.569Z';
-                config_data.access_keys[0].deactivated = false;
-                await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ACCOUNTS,
-                    account_config_path, JSON.stringify(config_data));
-
                 // regenerate (auto change the access keys in index 0 only)
-                const account_options2 = { config_root, name, regenerate: true};
+                const account_options2 = { config_root, name, iam_name: account_name, regenerate: true};
                 const res = await exec_manage_cli(type, ACTIONS.UPDATE, account_options2);
                 expect(JSON.parse(res).response.code).toEqual(ManageCLIResponse.AccountUpdated.code);
                 expect(JSON.parse(res).response.reply.access_keys[0].creation_date).toBeUndefined();
@@ -978,29 +953,15 @@ describe('manage nsfs cli account flow', () => {
 
             it('cli update iam account with access_key and secret_key flag (only object access keys in index 0 changes)', async function() {
                 const { name } = defaults;
-                const accounts_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
-                const account_id = accounts_details._id;
 
                 const account_name = 'account-to-be-owned';
-                const account_options1 = { config_root, name: account_name, uid: 5555, gid: 5555 };
+                const account_options1 = { config_root, name, iam_name: account_name, uid: 5555, gid: 5555 };
                 await exec_manage_cli(type, ACTIONS.ADD, account_options1);
-
-                // update the account to have the property owner
-                // (we use this way because now we don't have the way to create IAM users through the noobaa cli)
-                const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_name + '.json');
-                const { data } = await nb_native().fs.readFile(DEFAULT_FS_CONFIG, account_config_path);
-                const config_data = JSON.parse(data.toString());
-                config_data.owner = account_id; // just so we can identify this account as IAM user
-                // add additional properties to access_keys_object
-                config_data.access_keys[0].creation_date = '2024-07-10T11:26:34.569Z';
-                config_data.access_keys[0].deactivated = false;
-                await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ACCOUNTS,
-                    account_config_path, JSON.stringify(config_data));
 
                 // update access_key and secret_key (change the access keys in index 0 only)
                 const access_key = 'GIGiFAnjsaE7OKg5N7hB';
                 const secret_key = 'U3AYaMpU3zRDcRKWmvzgTr9MoHIAsD+3oEXAMPLE';
-                const account_options2 = { config_root, name, access_key, secret_key};
+                const account_options2 = { config_root, name, iam_name: account_name, access_key, secret_key};
                 const res = await exec_manage_cli(type, ACTIONS.UPDATE, account_options2);
                 expect(JSON.parse(res).response.code).toEqual(ManageCLIResponse.AccountUpdated.code);
                 expect(JSON.parse(res).response.reply.access_keys[0].creation_date).toBeUndefined();
@@ -1461,21 +1422,10 @@ describe('manage nsfs cli account flow', () => {
 
         it('should fail - cli account delete - root account has IAM accounts', async function() {
             const { name, type } = defaults;
-            const accounts_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
-            const account_id = accounts_details._id;
 
             const account_name = 'account-to-be-owned';
-            const account_options1 = { config_root, name: account_name, uid: 5555, gid: 5555 };
+            const account_options1 = { config_root, name, iam_name: account_name, uid: 5555, gid: 5555 };
             await exec_manage_cli(type, ACTIONS.ADD, account_options1);
-
-            // update the account to have the property owner
-            // (we use this way because now we don't have the way to create IAM users through the noobaa cli)
-            const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_name + '.json');
-            const { data } = await nb_native().fs.readFile(DEFAULT_FS_CONFIG, account_config_path);
-            const config_data = JSON.parse(data.toString());
-            config_data.owner = account_id; // just so we can identify this account as IAM user;
-            await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ACCOUNTS,
-                account_config_path, JSON.stringify(config_data));
 
             const action = ACTIONS.DELETE;
             const account_options2 = { config_root, name };

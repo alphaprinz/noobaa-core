@@ -14,8 +14,7 @@ const ManageCLIError = require('../manage_nsfs/manage_nsfs_cli_errors').ManageCL
 const bucket_policy_utils = require('../endpoint/s3/s3_bucket_policy_utils');
 const { throw_cli_error, get_config_file_path, get_bucket_owner_account,
     get_config_data, get_options_from_file, get_boolean_or_string_value,
-    check_root_account_owns_user, get_config_data_if_exists,
-    get_symlink_config_file_path } = require('../manage_nsfs/manage_nsfs_cli_utils');
+    get_config_data_if_exists, get_symlink_config_file_path } = require('../manage_nsfs/manage_nsfs_cli_utils');
 const { TYPES, ACTIONS, VALID_OPTIONS, OPTION_TYPE, FROM_FILE, BOOLEAN_STRING_VALUES, BOOLEAN_STRING_OPTIONS,
     GLACIER_ACTIONS, LIST_UNSETABLE_OPTIONS, ANONYMOUS, DIAGNOSE_ACTIONS } = require('../manage_nsfs/manage_nsfs_constants');
 const iam_utils = require('../endpoint/iam/iam_utils');
@@ -164,7 +163,8 @@ function validate_options_type_by_value(input_options_with_data) {
                 continue;
             }
             // special case for names, although the type is string we want to allow numbers as well
-            if ((option === 'name' || option === 'new_name') && (type_of_value === 'number')) {
+            if ((option === 'name' || option === 'new_name' || option === 'iam_name') &&
+                (type_of_value === 'number')) {
                 continue;
             }
             // special case for boolean values
@@ -333,7 +333,7 @@ async function validate_bucket_args(global_config, data, action) {
         if (!exists) {
             throw_cli_error(ManageCLIError.InvalidStoragePath, data.path);
         }
-        const account = await get_bucket_owner_account(global_config, global_config.accounts_dir_path, data.owner_account, false);
+        const account = await get_bucket_owner_account(global_config, global_config.accounts_dir_path, data.owner_account);
         const account_fs_context = await native_fs_utils.get_fs_context(account.nsfs_account_config, data.fs_backend);
         if (!config.NC_DISABLE_ACCESS_CHECK) {
             const accessible = await native_fs_utils.is_dir_rw_accessible(account_fs_context, data.path);
@@ -346,7 +346,7 @@ async function validate_bucket_args(global_config, data, action) {
                 const detail_msg = `${account.name} account not allowed to create new buckets. ` +
                 `Please make sure to have a valid new_buckets_path and enable the flag allow_bucket_creation`;
                 throw_cli_error(ManageCLIError.BucketCreationNotAllowed, detail_msg);
-        }
+            }
             data.owner_account = account._id; // TODO move this assignment to better place
         }
         if (account.owner) {
@@ -510,21 +510,20 @@ async function validate_account_not_owns_buckets(global_config, account) {
  */
 async function check_if_root_account_does_not_have_IAM_users(global_config, account_to_check, action) {
     const fs_context = native_fs_utils.get_process_fs_context(global_config.config_root_backend);
-    const entries = await nb_native().fs.readdir(fs_context, global_config.accounts_dir_path);
+    const entries = await nb_native().fs.readdir(fs_context,
+        path.join(global_config.root_accounts_dir_path, account_to_check.name));
     await P.map_with_concurrency(10, entries, async entry => {
-        if (entry.name.endsWith('.json')) {
-            const full_path = path.join(global_config.accounts_dir_path, entry.name);
+        if (entry.name.endsWith('.symlink')) {
+            const full_path = path.join(global_config.root_accounts_dir_path, account_to_check.name, entry.name);
             const account_data = await get_config_data(global_config.config_root_backend, full_path);
             if (entry.name.includes(config.NSFS_TEMP_CONF_DIR_NAME)) return undefined;
-            const is_root_account_owns_user = check_root_account_owns_user(account_to_check, account_data);
-            if (is_root_account_owns_user) {
-                const detail_msg = `Account ${account_to_check.name} has IAM account ${account_data.name}`;
-                if (action === ACTIONS.DELETE) {
-                    throw_cli_error(ManageCLIError.AccountDeleteForbiddenHasIAMAccounts, detail_msg);
-                }
-                // else it is called with action ACTIONS.UPDATE
-                throw_cli_error(ManageCLIError.AccountCannotBeRootAccountsManager, detail_msg);
+            if (account_data._id === account_to_check._id) return undefined;
+            const detail_msg = `Account ${account_to_check.name} has IAM account ${account_data.name}`;
+            if (action === ACTIONS.DELETE) {
+                throw_cli_error(ManageCLIError.AccountDeleteForbiddenHasIAMAccounts, detail_msg);
             }
+            // else it is called with action ACTIONS.UPDATE
+            throw_cli_error(ManageCLIError.AccountCannotBeRootAccountsManager, detail_msg);
             return account_data;
         }
     });

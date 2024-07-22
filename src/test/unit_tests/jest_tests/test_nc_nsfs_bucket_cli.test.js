@@ -12,7 +12,7 @@ const nb_native = require('../../../util/nb_native');
 const { set_path_permissions_and_owner, TMP_PATH, generate_s3_policy,
     set_nc_config_dir_in_config } = require('../../system_tests/test_utils');
 const { ACTIONS, TYPES, CONFIG_SUBDIRS } = require('../../../manage_nsfs/manage_nsfs_constants');
-const { get_process_fs_context, is_path_exists, get_bucket_tmpdir_full_path, update_config_file } = require('../../../util/native_fs_utils');
+const { get_process_fs_context, is_path_exists, get_bucket_tmpdir_full_path } = require('../../../util/native_fs_utils');
 const ManageCLIError = require('../../../manage_nsfs/manage_nsfs_cli_errors').ManageCLIError;
 const { ManageCLIResponse } = require('../../../manage_nsfs/manage_nsfs_cli_responses');
 
@@ -169,27 +169,14 @@ describe('manage nsfs cli bucket flow', () => {
         });
 
         it('should fail - cli create bucket - owner is an IAM account', async () => {
-            const { name } = account_defaults;
-            const accounts_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
-            const account_id = accounts_details._id;
-
             const { new_buckets_path: account_path } = account_defaults;
             const account_name = 'account-to-be-owned';
-            const account_options1 = { config_root, name: account_name, uid: 5555, gid: 5555,
-                new_buckets_path: account_path};
+            const account_options1 = { config_root, name: account_defaults.name, uid: 5555, gid: 5555,
+                new_buckets_path: account_path, iam_name: account_name};
             await fs_utils.create_fresh_path(account_path);
             await fs_utils.file_must_exist(account_path);
             await set_path_permissions_and_owner(account_path, account_options1, 0o700);
             await exec_manage_cli(TYPES.ACCOUNT, ACTIONS.ADD, account_options1);
-
-            // update the account to have the property owner
-            // (we use this way because now we don't have the way to create IAM users through the noobaa cli)
-            const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_name + '.json');
-            const { data } = await nb_native().fs.readFile(DEFAULT_FS_CONFIG, account_config_path);
-            const config_data = JSON.parse(data.toString());
-            config_data.owner = account_id; // just so we can identify this account as IAM user;
-            await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ACCOUNTS,
-                account_config_path, JSON.stringify(config_data));
 
             // create the bucket
             const action = ACTIONS.ADD;
@@ -198,7 +185,7 @@ describe('manage nsfs cli bucket flow', () => {
             await fs_utils.file_must_exist(bucket_options.path);
             await set_path_permissions_and_owner(bucket_options.path, { uid: account_options1.uid, gid: account_options1.gid }, 0o700);
             const res = await exec_manage_cli(TYPES.BUCKET, action, bucket_options);
-            expect(JSON.parse(res.stdout).error.code).toBe(ManageCLIError.BucketSetForbiddenBucketOwnerIsIAMAccount.code);
+            expect(JSON.parse(res.stdout).error.code).toBe(ManageCLIError.BucketSetForbiddenBucketOwnerNotExists.code);
         });
     });
 
@@ -249,7 +236,7 @@ describe('manage nsfs cli bucket flow', () => {
             await fs_utils.folder_delete(`${path_to_json_bucket_options_dir}`);
         });
 
-        it('cli2 create bucket using from_file with required options', async () => {
+        it('cli create bucket using from_file with required options', async () => {
             const action = ACTIONS.ADD;
             const bucket_options = { name: bucket_defaults.name, owner: bucket_defaults.owner, path: bucket_defaults.path };
             // write the json_file_options
@@ -541,27 +528,15 @@ describe('manage nsfs cli bucket flow', () => {
         });
 
         it('should fail - cli update bucket - owner is an IAM account', async () => {
-            const { name } = account_defaults;
-            const accounts_details = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
-            const account_id = accounts_details._id;
-
             const { new_buckets_path: account_path } = account_defaults;
             const account_name_iam_account = 'account-to-be-owned';
-            const account_options1 = { config_root, name: account_name_iam_account, uid: 5555, gid: 5555,
+            const account_options1 = { config_root, name: account_defaults.name,
+                iam_name: account_name_iam_account, uid: 5555, gid: 5555,
                 new_buckets_path: account_path};
             await fs_utils.create_fresh_path(account_path);
             await fs_utils.file_must_exist(account_path);
             await set_path_permissions_and_owner(account_path, account_options1, 0o700);
             await exec_manage_cli(TYPES.ACCOUNT, ACTIONS.ADD, account_options1);
-
-            // update the account to have the property owner
-            // (we use this way because now we don't have the way to create IAM users through the noobaa cli)
-            const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_name_iam_account + '.json');
-            const { data } = await nb_native().fs.readFile(DEFAULT_FS_CONFIG, account_config_path);
-            const config_data = JSON.parse(data.toString());
-            config_data.owner = account_id; // just so we can identify this account as IAM user;
-            await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ACCOUNTS,
-                account_config_path, JSON.stringify(config_data));
 
             // update the bucket
             const action = ACTIONS.UPDATE;
@@ -570,7 +545,7 @@ describe('manage nsfs cli bucket flow', () => {
             await fs_utils.file_must_exist(bucket_defaults.path);
             await set_path_permissions_and_owner(bucket_defaults.path, account_options1, 0o700);
             const res = await exec_manage_cli(TYPES.BUCKET, action, bucket_options);
-            expect(JSON.parse(res.stdout).error.code).toBe(ManageCLIError.BucketSetForbiddenBucketOwnerIsIAMAccount.code);
+            expect(JSON.parse(res.stdout).error.code).toBe(ManageCLIError.BucketSetForbiddenBucketOwnerNotExists.code);
         });
     });
 
