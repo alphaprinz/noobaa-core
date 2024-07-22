@@ -102,6 +102,7 @@ async function main(argv = minimist(process.argv.slice(2))) {
 }
 
 async function bucket_management(action, user_input) {
+    manage_nsfs_validations.validate_bucket_args_pre(action, user_input);
     const data = await fetch_bucket_data(action, user_input);
     await manage_bucket_operations(action, data, user_input);
 }
@@ -143,9 +144,6 @@ async function fetch_bucket_data(action, user_input) {
     //if we're updating the owner, needs to override owner in file with the owner from user input.
     //if we're adding a bucket, need to set its owner id field
     if ((action === ACTIONS.UPDATE && user_input.owner) || (action === ACTIONS.ADD)) {
-        if (!user_input.owner) {
-            throw_cli_error(ManageCLIError.MissingBucketOwnerFlag);
-        }
         const account = await get_bucket_owner_account(global_config,
             global_config.root_accounts_dir_path, user_input.owner, true);
         data.owner_account = account._id;

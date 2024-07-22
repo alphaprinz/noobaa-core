@@ -367,6 +367,18 @@ async function validate_bucket_args(global_config, data, action) {
     }
 }
 
+/**
+ * Validation before fetching bucket data.
+ *
+ * @param {string} action
+ * @param {Object} user_input
+ */
+
+function validate_bucket_args_pre(action, user_input) {
+    //for add bucket we have to get the owner so we can set owner_account
+    if (action === ACTIONS.ADD && !user_input.owner) throw_cli_error(ManageCLIError.MissingBucketOwnerFlag);
+}
+
 /////////////////////////////
 //// ACCOUNT VALIDATIONS ////
 /////////////////////////////
@@ -583,6 +595,7 @@ function validate_whitelist_ips(ips_to_validate) {
 // EXPORTS
 exports.validate_input_types = validate_input_types;
 exports.validate_bucket_args = validate_bucket_args;
+exports.validate_bucket_args_pre = validate_bucket_args_pre;
 exports.validate_account_args = validate_account_args;
 exports._validate_access_keys = _validate_access_keys;
 exports.validate_root_accounts_manager_update = validate_root_accounts_manager_update;
