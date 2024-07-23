@@ -460,7 +460,7 @@ async function validate_account_args(global_config, data, action, is_flag_iam_op
 async function validate_account_resources_before_deletion(global_config, data) {
     await validate_account_not_owns_buckets(global_config, data);
     // If it is root account (not owned by other account) then we check that it doesn't owns IAM accounts
-    if (data.owner === undefined) {
+    if (!data.owner) {
         await check_if_root_account_does_not_have_IAM_users(global_config, data, ACTIONS.DELETE);
     }
 }
