@@ -63,7 +63,7 @@ The default config directory structure contains the following files/directories 
 system.json                 // Required
 access_keys/                // Required
 accounts/                   // Required
-root_account/               // Required
+root_accounts/              // Required
 buckets/                    // Required
 config.json                 // Optional
 master_keys.json            // Optional
@@ -126,23 +126,23 @@ certificates/                                   // Optional
     1234.json
     ab12.json
     ```
-`root_accounts/
+`root_accounts/` -
 * <u>Type</u>: Directory.
 * <u>Required</u>: Yes.
 * <u>Description</u>: A directory that contains a directory per root account, named {root_account_name}.
-Inside each such direcoty, there is a symlink per iam account that belong to the root account, named {account_name}.symlink.
-There is also a symlink for the root account, named  {root_account_name}.symlink.
-Symlinks link to an account withing account/.
+Inside each such directory, there is a symlink per iam account that belongs to the root account, named {account_name}.symlink.
+There is also a symlink for the root account, named {root_account_name}.symlink.
+Symlinks link to an account within account/.
 The account symlink points to the relative path of the account rather than an absolute path, eg: `../../accounts/abcd.json`.
 * <u>Example</u>:
     ```sh
     > ls /etc/noobaa.conf.d/root_accounts/
-    alice.symlink
-    bob.symlink
-    charlie.symlink
-    > ls /etc/noobaa.conf.d/root_accounts/alice/
-    alice.symlink
-    bob.symlink
+    alice/
+    bob/
+    charlie/
+    > ls -la /etc/noobaa.conf.d/root_accounts/alice/
+    alice.symlink -> ../../accounts/abcd.json
+    bob.symlink   -> ../../accounts/1234.json
     ```
 
 `access_keys/` 
