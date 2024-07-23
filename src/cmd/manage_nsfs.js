@@ -370,6 +370,12 @@ async function fetch_account_data(action, user_input) {
         data = await fetch_existing_account_data(action, data, user_input.name, decrypt_secret_key);
     }
 
+    //set owner for iam account
+    if (action === ACTIONS.ADD && user_input.iam_name) {
+        const root_account = await fetch_existing_account_data(action, {name: user_input.name}, user_input.name, false);
+        data.owner = root_account._id;
+    }
+
     // override values
     if (has_access_keys(data.access_keys)) {
         // access_key as SensitiveString
@@ -584,7 +590,7 @@ async function delete_account(data, user_input) {
         await native_fs_utils.folder_delete(root_account_config_path, fs_context);
     } else {
         //no. delete just the iam account symlink
-        const iam_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_name, data.name, user_input.name);
+        const iam_account_config_path = get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name, user_input.name);
         await nb_native().fs.unlink(fs_context, iam_account_config_path);
     }
     write_stdout_response(ManageCLIResponse.AccountDeleted, '', {account: data.name});
