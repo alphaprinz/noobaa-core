@@ -64,7 +64,7 @@ The `account add` command is used to create a new account with customizable opti
 #### Usage
 ```sh
 noobaa-cli account add --name <root_account_name> --uid <uid> --gid <gid> [--user]
-[--new_buckets_path][--access_key][--secret_key][--fs_backend]
+[--iam_name][--new_buckets_path][--access_key][--secret_key][--fs_backend]
 [--allow_bucket_creation][--force_md5_etag][--anonymous][--from_file][--iam_operate_on_root_account]
 ```
 #### Flags -
@@ -134,7 +134,7 @@ The `account update` command is used to update an existing account with customiz
 #### Usage
 ```sh
 noobaa-cli account update --name <root_account_name> [--new_name][--uid][--gid][--user]
-[--new_buckets_path][--access_key][--secret_key][--regenerate][--fs_backend]
+[--iam_name][--new_buckets_path][--access_key][--secret_key][--regenerate][--fs_backend]
 [--allow_bucket_creation][--force_md5_etag][--anonymous][--iam_operate_on_root_account]
 ```
 #### Flags -
@@ -207,7 +207,7 @@ The `account status` command is used to print the status of the account.
 
 #### Usage
 ```sh
-noobaa-cli account status --name <root_account_name> [--access_key][--anonymous][--show_secrets]
+noobaa-cli account status --name <root_account_name> [--iam_name][--access_key][--anonymous][--show_secrets]
 ```
 #### Flags -
 - `name` (Required)
@@ -276,7 +276,7 @@ The `account delete` command is used to delete an existing account.
 
 #### Usage
 ```sh
-noobaa-cli account delete --name <root_account_name> [--anonymous]
+noobaa-cli account delete --name <root_account_name> [--iam_name][--anonymous]
 ```
 #### Flags -
 - `name` (Required)

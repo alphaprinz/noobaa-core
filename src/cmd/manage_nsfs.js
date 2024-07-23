@@ -339,6 +339,8 @@ function set_access_keys(access_key, secret_key, generate) {
 // in name and new_name we allow type number, hence convert it to string
 async function fetch_account_data(action, user_input) {
     const { access_keys = [], new_access_key = undefined } = user_input.anonymous ? {} : get_access_keys(action, user_input);
+    //if we're fetching an iam account, take the name from the specified parameter ("iam_name").
+    //otherwise we're fetching a root account, so just use the "name" parameter.
     const name = user_input.iam_name ?? user_input.name;
     let data = {
         // added undefined values to keep the order the properties when printing the data object
