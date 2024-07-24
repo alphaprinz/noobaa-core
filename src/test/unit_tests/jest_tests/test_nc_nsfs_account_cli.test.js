@@ -1330,6 +1330,7 @@ describe('manage nsfs cli account flow', () => {
             await fs_utils.file_must_not_exist(config_path);
             const symlink_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCESS_KEYS, defaults.access_key + '.symlink');
             await fs_utils.file_must_not_exist(symlink_config_path);
+            await fs_utils.file_must_not_exist(path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name));
         });
 
         it('cli delete account (account has 2 access keys objects)', async () => {
@@ -1431,6 +1432,23 @@ describe('manage nsfs cli account flow', () => {
             const account_options2 = { config_root, name };
             const res = await exec_manage_cli(type, action, account_options2);
             expect(JSON.parse(res.stdout).error.code).toBe(ManageCLIError.AccountDeleteForbiddenHasIAMAccounts.code);
+        });
+
+        it('cli account delete - delete iam account', async function() {
+            const { name, type } = defaults;
+
+            const account_name = 'account-to-be-owned';
+            const account_options1 = { config_root, name, iam_name: account_name, uid: 5555, gid: 5555 };
+            await exec_manage_cli(type, ACTIONS.ADD, account_options1);
+
+            const action = ACTIONS.DELETE;
+            const account_options2 = { config_root, name, iam_name: account_name };
+            const res = await exec_manage_cli(type, action, account_options2);
+            const res_json = JSON.parse(res.trim());
+            expect(res_json.response.code).toBe(ManageCLIResponse.AccountDeleted.code);
+            const config_path = path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name, account_name + '.json');
+            await fs_utils.file_must_not_exist(config_path);
+            await fs_utils.file_must_exist(path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name));
         });
 
     });
