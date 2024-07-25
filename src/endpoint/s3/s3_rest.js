@@ -244,8 +244,7 @@ async function authorize_request_policy(req) {
     const is_owner = (function() {
         if (account.bucket_claim_owner && account.bucket_claim_owner.unwrap() === req.params.bucket) return true;
         if (req.object_sdk.nsfs_config_root && account._id === owner_account.id) return true; // NC NSFS case
-        if (account_identifier_name === bucket_owner.unwrap()) return true;
-        if (account_identifier_id && account_identifier_id === bucket_owner.unwrap()) return true;
+        if (!req.object_sdk.nsfs_config_root && account_identifier_name === bucket_owner.unwrap()) return true;
         return false;
     }());
 
@@ -257,12 +256,18 @@ async function authorize_request_policy(req) {
         if (is_owner || is_iam_account_and_same_root_account_owner) return;
         throw new S3Error(S3Error.AccessDenied);
     }
-    let permission = await s3_bucket_policy_utils.has_bucket_policy_permission(
-        s3_policy, account_identifier_name, method, arn_path, req);
 
-    if (account_identifier_id && permission === "IMPLICIT_DENY") {
+    let permission;
+    //for backwards compatibility, in nsfs, we allow principal to be either
+    //account name or account id.
+    if (account_identifier_id) {
         permission = await s3_bucket_policy_utils.has_bucket_policy_permission(
             s3_policy, account_identifier_id, method, arn_path, req);
+    }
+
+    if (!account_identifier_id || permission === "IMPLICIT_DENY") {
+        permission = await s3_bucket_policy_utils.has_bucket_policy_permission(
+            s3_policy, account_identifier_name, method, arn_path, req);
     }
 
     if (permission === "DENY") throw new S3Error(S3Error.AccessDenied);
