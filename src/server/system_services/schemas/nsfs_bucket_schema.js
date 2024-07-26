@@ -34,7 +34,7 @@ module.exports = {
         },
         // bucket_owner is the account name
         // deprecated - can become out-of-sync when owner account's name is changed
-        bucket_owner:  {
+        bucket_owner: {
             type: 'string',
         },
         tag: {

@@ -134,7 +134,7 @@ function handle_bucket_file(dir_ent) {
     return 0;
 }
 
-function run({conf_path}){
+function run({conf_path}) {
 
     conf_path = conf_path || config.NSFS_NC_CONF_DIR;
     dbg.log0("Configuration directory = ", conf_path);
