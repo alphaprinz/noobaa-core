@@ -203,7 +203,7 @@ describe('Accountspace_FS tests', () => {
             await fs.promises.chmod(account_path, 0o600);
             await fs.promises.symlink(account_path, account_access_path);
             await fs_utils.create_fresh_path(path.join(accountspace_fs.root_accounts_dir, account.name));
-            const root_account_path = accountspace_fs._get_account_config_path_by_root_name(account.name, account.name);
+            const root_account_path = await accountspace_fs._get_account_config_path_by_root_name(account.name, account.name);
             await fs.promises.symlink(account_path, root_account_path);
         }
     });
@@ -989,7 +989,7 @@ describe('Accountspace_FS tests', () => {
                 const account_path = accountspace_fs._get_account_config_path(account._id);
                 // assuming that the root account has only 1 access key in the 0 index
                 const account_access_path = accountspace_fs._get_access_keys_config_path(account.access_keys[0].access_key);
-                const root_account_path = accountspace_fs._get_account_config_path_by_root_name(account.name, account.name);
+                const root_account_path = await accountspace_fs._get_account_config_path_by_root_name(account.name, account.name);
                 await fs.promises.writeFile(account_path, JSON.stringify(account));
                 await fs.promises.chmod(account_path, 0o600);
                 await fs.promises.symlink(account_path, account_access_path);

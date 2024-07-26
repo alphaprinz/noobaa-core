@@ -494,8 +494,12 @@ class AccountSpaceFS {
         return get_config_file_path(this.accounts_dir, account_id);
      }
 
-     _get_account_config_path_by_root_name(account_name, root_name) {
-        return get_symlink_config_file_path(this.root_accounts_dir, account_name, root_name);
+     async _get_account_config_path_by_root_name(account_name, root_name) {
+        const iam_account_path = get_symlink_config_file_path(this.root_accounts_dir, account_name, root_name);
+        if (await native_fs_utils.is_path_exists(this.fs_context, iam_account_path)) {
+            return iam_account_path;
+        }
+        return this._get_account_config_path(account_name);
      }
 
      async _get_root_account_name(account) {
@@ -514,7 +518,7 @@ class AccountSpaceFS {
             root_account_name = await this._get_root_account_name(requesting_account);
         }
 
-        const account_path = this._get_account_config_path_by_root_name(requested_account_name, root_account_name);
+        const account_path = await this._get_account_config_path_by_root_name(requested_account_name, root_account_name);
         return account_path;
      }
 
@@ -721,7 +725,7 @@ class AccountSpaceFS {
     }
 
     async _check_username_already_exists(action, username, root_name) {
-        const account_config_path = this._get_account_config_path_by_root_name(username, root_name);
+        const account_config_path = await this._get_account_config_path_by_root_name(username, root_name);
         const name_exists = await native_fs_utils.is_path_exists(this.fs_context,
             account_config_path);
         if (name_exists) {

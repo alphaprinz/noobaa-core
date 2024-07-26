@@ -22,7 +22,7 @@ const { CONFIG_SUBDIRS } = require('../manage_nsfs/manage_nsfs_constants');
 const KeysSemaphore = require('../util/keys_semaphore');
 const { get_umasked_mode, isDirectory, validate_bucket_creation,
     create_config_file, delete_config_file, get_bucket_tmpdir_full_path, folder_delete,
-    entity_enum, translate_error_codes, update_config_file} = require('../util/native_fs_utils');
+    update_config_file, entity_enum, translate_error_codes, is_path_exists } = require('../util/native_fs_utils');
 const NoobaaEvent = require('../manage_nsfs/manage_nsfs_events_utils').NoobaaEvent;
 const { anonymous_access_key } = require('./object_sdk');
 const { get_account_by_principal } = require('../manage_nsfs/manage_nsfs_validations');
@@ -71,8 +71,12 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
        return path.join(this.bucket_schema_dir, bucket_name + '.json');
     }
 
-    _get_root_account_config_path(name) {
-        return path.join(this.root_accounts_dir, name, name + '.symlink');
+    async _get_root_account_config_path(name) {
+        const iam_account_path = path.join(this.root_accounts_dir, name, name + '.symlink');
+        if (await is_path_exists(this.fs_context, iam_account_path)) {
+            return iam_account_path;
+        }
+        return this._get_account_config_path(name);
     }
 
     _get_account_config_path(id) {
@@ -84,7 +88,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
     }
 
     async _get_account_by_name(name) {
-        const account_config_path = this._get_root_account_config_path(name);
+        const account_config_path = await this._get_root_account_config_path(name);
         try {
             await nb_native().fs.stat(this.fs_context, account_config_path);
             return true;
@@ -116,7 +120,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
     async read_account_by_access_key({ access_key }) {
         try {
             if (!access_key) throw new Error('no access key');
-            const iam_path = access_key === anonymous_access_key ? this._get_root_account_config_path(config.ANONYMOUS_ACCOUNT_NAME) :
+            const iam_path = access_key === anonymous_access_key ? await this._get_root_account_config_path(config.ANONYMOUS_ACCOUNT_NAME) :
                 this._get_access_keys_config_path(access_key);
             const { data } = await nb_native().fs.readFile(this.fs_context, iam_path);
             const account = JSON.parse(data.toString());
@@ -349,7 +353,6 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             tag: js_utils.default_value(tag, undefined),
             owner_account: account._id,
             creator: account._id,
-            system_owner: new SensitiveString(account.name),
             bucket_owner: new SensitiveString(account.name),
             system_owner: account._id,
             versioning: config.NSFS_VERSIONING_ENABLED && lock_enabled ? 'ENABLED' : 'DISABLED',
@@ -744,7 +747,7 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
 
         // If the system owner account wants to access the bucket, allow it
         if (is_system_owner) return true;
-        const is_owner = (bucket.owner_account === account_identifier);z
+        const is_owner = (bucket.owner_account === account_identifier);
         const bucket_policy = bucket.s3_policy;
 
         if (!bucket_policy) {
