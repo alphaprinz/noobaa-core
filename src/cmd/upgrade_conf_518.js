@@ -164,7 +164,6 @@ function main(argv = minimist(process.argv.slice(2))) {
             return res;
         }
     }
-    dbg.log0("asdasd");
     for (const account_file of account_files) {
         const res = handle_account_file(account_file, conf_path);
         if (res !== 0) {
