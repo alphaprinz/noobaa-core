@@ -5,6 +5,7 @@ const minimist = require('minimist');
 const {statSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, symlinkSync, rmSync, writeFileSync} = require('fs');
 const {join} = require('path');
 const { CONFIG_SUBDIRS } = require('../manage_nsfs/manage_nsfs_constants');
+const config = require('../../config');
 
 const dbg = require('../util/debug_module')(__filename);
 
@@ -133,11 +134,12 @@ function handle_bucket_file(dir_ent) {
     return 0;
 }
 
-function main(argv = minimist(process.argv.slice(2))) {
+function run({conf_path}){
 
-    const conf_path = argv.conf_path;
+    conf_path = conf_path || config.NSFS_NC_CONF_DIR;
     dbg.log0("Configuration directory = ", conf_path);
 
+    //check all dirs exist
     assert_dir_exists(conf_path);
 
     const account_dir = join(conf_path, CONFIG_SUBDIRS.ACCOUNTS);
@@ -146,6 +148,7 @@ function main(argv = minimist(process.argv.slice(2))) {
     assert_dir_exists(bucket_dir);
     assert_dir_exists(join(conf_path, CONFIG_SUBDIRS.ACCESS_KEYS));
 
+    //create new root_accounts dir
     const root_accounts_path = join(conf_path, CONFIG_SUBDIRS.ROOT_ACCOUNTS);
     if (!validate_dir_exists(root_accounts_path)) {
         dbg.log("Creating root accounts dir at ", root_accounts_path);
@@ -156,14 +159,18 @@ function main(argv = minimist(process.argv.slice(2))) {
         }
     }
 
+    //read all accounts
     const account_files = readdirSync(account_dir, {withFileTypes: true});
 
+    //map account id to name (used to create symlinks of iam accounts)
     for (const account_file of account_files) {
         const res = map_account_id_to_name(account_file);
         if (res !== 0) {
             return res;
         }
     }
+
+    //upgrade accounts
     for (const account_file of account_files) {
         const res = handle_account_file(account_file, conf_path);
         if (res !== 0) {
@@ -171,6 +178,7 @@ function main(argv = minimist(process.argv.slice(2))) {
         }
     }
 
+    //upgrade buckets
     const bucket_files = readdirSync(bucket_dir, {withFileTypes: true});
     for (const bucket_file of bucket_files) {
         const res = handle_bucket_file(bucket_file);
@@ -181,6 +189,13 @@ function main(argv = minimist(process.argv.slice(2))) {
 
     dbg.log("Completed successfully.");
     return 0;
+}
+
+function main(argv = minimist(process.argv.slice(2))) {
+
+    //optionally get the conf_path from argv (if not we'll use config.NSFS_NC_CONF_DIR)
+    const conf_path = argv.conf_path;
+    return run({conf_path});
 }
 
 if (require.main === module) {
