@@ -353,7 +353,6 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
             tag: js_utils.default_value(tag, undefined),
             owner_account: account._id,
             creator: account._id,
-            bucket_owner: new SensitiveString(account.name),
             system_owner: account._id,
             versioning: config.NSFS_VERSIONING_ENABLED && lock_enabled ? 'ENABLED' : 'DISABLED',
             object_lock_configuration: config.WORM_ENABLED ? {

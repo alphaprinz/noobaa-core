@@ -477,7 +477,7 @@ class AccountSpaceFS {
     ////////////////////////
     // INTERNAL FUNCTIONS //
     ////////////////////////
-    
+
     // this function was copied from namespace_fs and bucketspace_fs
     // It is a fallback that we use, but might be not accurate
     _translate_error_codes(err, entity) {
