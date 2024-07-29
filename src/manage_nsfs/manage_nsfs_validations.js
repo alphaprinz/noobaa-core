@@ -499,16 +499,16 @@ function _validate_access_keys(access_key, secret_key) {
 async function validate_account_not_owns_buckets(global_config, account) {
     const fs_context = native_fs_utils.get_process_fs_context(global_config.config_root_backend);
     const entries = await nb_native().fs.readdir(fs_context, global_config.buckets_dir_path);
-    let data;
+    let bucket_data;
     await P.map_with_concurrency(10, entries, async entry => {
         if (entry.name.endsWith('.json')) {
             const full_path = path.join(global_config.buckets_dir_path, entry.name);
-            data = await get_config_data_if_exists(global_config.config_root_backend, full_path);
-            if (data && data.owner_account === account._id) {
-                const detail_msg = `Account ${account.name} has bucket ${data.name}`;
+            bucket_data = await get_config_data_if_exists(global_config.config_root_backend, full_path);
+            if (bucket_data && bucket_data.owner_account === account._id) {
+                const detail_msg = `Account ${account.name} has bucket ${bucket_data.name}`;
                 throw_cli_error(ManageCLIError.AccountDeleteForbiddenHasBuckets, detail_msg);
             }
-            return data;
+            return bucket_data;
         }
     });
 }
@@ -529,6 +529,7 @@ async function check_if_root_account_does_not_have_IAM_users(global_config, acco
             const full_path = path.join(global_config.root_accounts_dir_path, account_to_check.name, entry.name);
             const account_data = await get_config_data(global_config.config_root_backend, full_path);
             if (entry.name.includes(config.NSFS_TEMP_CONF_DIR_NAME)) return undefined;
+            //ignore the root account being checked
             if (account_data._id === account_to_check._id) return undefined;
             const detail_msg = `Account ${account_to_check.name} has IAM account ${account_data.name}`;
             if (action === ACTIONS.DELETE) {

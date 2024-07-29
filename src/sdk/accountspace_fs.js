@@ -65,7 +65,6 @@ class AccountSpaceFS {
 
     // 1 - check that the requesting account is a root user account
     // 2 - check if username already exists
-    //     GAP - it should be only under the root account in the future
     // 3 - copy the data from the root account user details to a new config file
     async create_user(params, account_sdk) {
         const action = IAM_ACTIONS.CREATE_USER;
@@ -74,7 +73,10 @@ class AccountSpaceFS {
             const requesting_account = account_sdk.requesting_account;
             this._check_if_requesting_account_is_root_account(action, requesting_account,
                 { username: params.username, iam_path: params.iam_path });
-            await this._check_username_already_exists(action, params.username, requesting_account.name.unwrap());
+            //if iam_operate_on_root_account, the requested account is root_account
+            //otherwise, requested account is iam_account, and requesting account is the root account.
+            const root_name = requesting_account.iam_operate_on_root_account ? params.username : requesting_account.name.unwrap();
+            await this._check_username_already_exists(action, params.username, root_name);
             const created_account = await this._copy_data_from_requesting_account_to_account_config(action, requesting_account, params);
             return {
                 iam_path: created_account.iam_path || IAM_DEFAULT_PATH,
@@ -360,7 +362,7 @@ class AccountSpaceFS {
             const access_key_id = params.access_key;
             this._check_if_requesting_account_is_root_account_or_user_om_himself(action,
                 requesting_account, params.username);
-            const username = params.username ?? requester.name; // username is not required
+            const username = params.username ?? requesting_account.name; // username is not required
             const requested_account_path = get_symlink_config_file_path(this.access_keys_dir, params.access_key);
             await this._check_if_account_exists_by_access_key_symlink(action, requested_account_path, access_key_id);
             const requested_account = await this._get_account_decrypted_data_optional(requested_account_path, true);
@@ -412,7 +414,7 @@ class AccountSpaceFS {
             const access_key_id = params.access_key;
             this._check_if_requesting_account_is_root_account_or_user_om_himself(action,
                 requesting_account, params.username);
-            const username = params.username ?? requester.name; // username is not required
+            const username = params.username ?? requesting_account.name; // username is not required
             const requested_account_path = get_symlink_config_file_path(this.access_keys_dir, access_key_id);
             await this._check_if_account_exists_by_access_key_symlink(action, requested_account_path, access_key_id);
             const requested_account = await this._get_account_decrypted_data_optional(requested_account_path, true);
@@ -509,6 +511,17 @@ class AccountSpaceFS {
         return root_account.name;
      }
 
+     /**
+      * Returns the path of the requested account according to whether requesting account is
+      * iam_operate_on_root_account or not.
+      * If it is, then requested account is the root account whose name is the requested account.
+      * In this case, both root_account_name and iam_account_name is the requested account name.
+      * Otherwise, the requesting account is the root account, and the requested account
+      * is the iam account name.
+      * @param {Object} requesting_account 
+      * @param {string} requested_account_name 
+      * @returns 
+      */
      async _get_account_config_path_by_requesting_account(requesting_account, requested_account_name) {
         let root_account_name;
         if (requesting_account.iam_operate_on_root_account) {

@@ -72,11 +72,11 @@ function get_config_file_path(config_type_path, file_name) {
 
 /**
  * Returns path of a symlink, either by access key or account name.
- * For account name, both account name and root account name are required.
+ * For account name, both account name (as filename) and root account name are required.
  *
  * @param {string} config_type_path either access key dir or root accounts dir
  * @param {string} file_name name of file, either access key id or account name
- * @param {string} root_account_name Optinal root account name for by-name symlink
+ * @param {string} [root_account_name] root account name for by-name symlink
  * @returns symlink path
  */
 
@@ -130,8 +130,8 @@ async function get_config_data_if_exists(config_root_backend, config_file_path, 
  * @param {boolean} is_symlink whether while is symlink or not. Name -> true, id -> false/undef
  */
 async function get_bucket_owner_account(global_config, dir_path, root_account_identifier, is_symlink) {
-    //for root accounts, iam_account is optional and is equal to root_account_identifier
     const account_config_path = is_symlink ?
+        //we need a root account, so both filename (iam account name) and root account name are root_account_identifier
         get_symlink_config_file_path(dir_path, root_account_identifier, root_account_identifier) :
         get_config_file_path(dir_path, root_account_identifier);
     try {
@@ -139,6 +139,9 @@ async function get_bucket_owner_account(global_config, dir_path, root_account_id
         return account;
     } catch (err) {
         if (err.code === 'ENOENT') {
+            /*In case we're trying to validate bucket, we are trying to get the owner account.
+            If we fail, it means the bucket owner json is missing (either because bucket json is wrong or account json file is not there).
+            Under such circumstance, this message (with owner account id) is best we can do and is better than nothing.*/
             const detail_msg = `bucket owner ${root_account_identifier} does not exists`;
             throw_cli_error(ManageCLIError.BucketSetForbiddenBucketOwnerNotExists, detail_msg, {bucket_owner: root_account_identifier});
         }

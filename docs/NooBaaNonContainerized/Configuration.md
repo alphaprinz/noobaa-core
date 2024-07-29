@@ -130,8 +130,8 @@ certificates/                                   // Optional
 * <u>Type</u>: Directory.
 * <u>Required</u>: Yes.
 * <u>Description</u>: A directory that contains a directory per root account, named {root_account_name}.
-Inside each such directory, there is a symlink per iam account that belongs to the root account, named {account_name}.symlink.
-There is also a symlink for the root account, named {root_account_name}.symlink.
+Inside each such directory, there is a symlink for the root account, named {root_account_name}.symlink.
+There will be also the symlinks for the IAM accounts that are owned by the root account, named {account_name}.symlink.
 Symlinks link to an account within account/.
 The account symlink points to the relative path of the account rather than an absolute path, eg: `../../accounts/abcd.json`.
 * <u>Example</u>:

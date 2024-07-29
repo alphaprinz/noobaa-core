@@ -525,7 +525,7 @@ describe('manage nsfs cli account flow', () => {
             };
 
             beforeEach(async () => {
-                await P.all(_.map([ CONFIG_SUBDIRS.ROOT_ACCOUNTS, CONFIG_SUBDIRS.ACCESS_KEYS], async dir =>
+                await P.all(_.map([CONFIG_SUBDIRS.ROOT_ACCOUNTS, CONFIG_SUBDIRS.ACCESS_KEYS], async dir =>
                     fs_utils.create_fresh_path(`${config_root}/${dir}`)));
                 await fs_utils.create_fresh_path(root_path);
                 set_nc_config_dir_in_config(config_root);

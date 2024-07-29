@@ -196,10 +196,8 @@ async function get_bucket_status(data) {
         const config_data = await get_config_data(global_config.config_root_backend, bucket_path);
         const account_path = get_config_file_path(global_config.accounts_dir_path, config_data.owner_account);
         const account_data = await get_config_data(global_config.config_root_backend, account_path);
-        config_data.owner_account = {
-            id: account_data._id,
-            email: account_data.email
-        };
+        config_data.owner_account = account_data._id;
+        config_data.bucket_owner = account_data.name;
 
         write_stdout_response(ManageCLIResponse.BucketStatus, config_data);
     } catch (err) {
@@ -496,7 +494,7 @@ async function update_account(data, user_input, is_flag_iam_operate_on_root_acco
     const cur_access_key = has_access_keys(data.access_keys) ? data.access_keys[0].access_key : undefined;
     const update_name = new_name && cur_name && data.new_name !== cur_name;
     const update_access_key = data.new_access_key && cur_access_key && data.new_access_key.unwrap() !== cur_access_key.unwrap();
-    const is_root_account = data.name === user_input.name;
+    const is_root_account = data.owner === undefined;
 
     if (!update_name && !update_access_key) {
         if (data.new_access_key) {

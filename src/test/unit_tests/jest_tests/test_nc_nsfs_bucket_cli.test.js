@@ -185,6 +185,7 @@ describe('manage nsfs cli bucket flow', () => {
             await fs_utils.file_must_exist(bucket_options.path);
             await set_path_permissions_and_owner(bucket_options.path, { uid: account_options1.uid, gid: account_options1.gid }, 0o700);
             const res = await exec_manage_cli(TYPES.BUCKET, action, bucket_options);
+            //the requesting account is not root, so we couldn't find it.
             expect(JSON.parse(res.stdout).error.code).toBe(ManageCLIError.BucketSetForbiddenBucketOwnerNotExists.code);
         });
     });
