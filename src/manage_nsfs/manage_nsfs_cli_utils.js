@@ -191,7 +191,7 @@ async function get_options_from_file(file_path) {
  * @param {object[]} access_keys
  */
 function has_access_keys(access_keys) {
-    return access_keys.length > 0;
+    return access_keys.length > 0 && access_keys[0].access_key;
 }
 
 /**

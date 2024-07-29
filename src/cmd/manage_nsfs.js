@@ -599,7 +599,7 @@ async function delete_account(data, user_input) {
 async function get_account_status(data, user_input, show_secrets) {
     await manage_nsfs_validations.validate_account_args(global_config, data, ACTIONS.STATUS, undefined);
     try {
-        const account_path = _.isUndefined(data.name) ?
+        const account_path = _.isUndefined(user_input.name) ?
             get_symlink_config_file_path(global_config.access_keys_dir_path, data.access_keys[0].access_key) :
             //user_input.name is root account name. data.name is iam account name
             get_symlink_config_file_path(global_config.root_accounts_dir_path, data.name, user_input.name);
