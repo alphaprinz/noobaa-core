@@ -205,6 +205,9 @@ class AccountSpaceFS {
             // GAP - we do not have the user iam_path at this point (error message)
             this._check_if_requesting_account_is_root_account(action, requesting_account,
                 { username: params.username });
+            //path to the config file of the root account owning the requested account
+            //in case requesting account is root manager, this is the requeted account.
+            //otherwise, it is the requesting account.
             const root_account_config_path = await
                 this._get_account_config_path_by_requesting_account(requesting_account, params.username);
             await this._check_if_account_config_file_exists(action, params.username, root_account_config_path);
@@ -479,18 +482,6 @@ class AccountSpaceFS {
     ////////////////////////
     // INTERNAL FUNCTIONS //
     ////////////////////////
-
-    // this function was copied from namespace_fs and bucketspace_fs
-    // It is a fallback that we use, but might be not accurate
-    _translate_error_codes(err, entity) {
-        if (err.rpc_code) return err;
-        if (err.code === 'ENOENT') err.rpc_code = `NO_SUCH_${entity}`;
-        if (err.code === 'EEXIST') err.rpc_code = `${entity}_ALREADY_EXISTS`;
-        if (err.code === 'EPERM' || err.code === 'EACCES') err.rpc_code = 'UNAUTHORIZED';
-        if (err.code === 'IO_STREAM_ITEM_TIMEOUT') err.rpc_code = 'IO_STREAM_ITEM_TIMEOUT';
-        if (err.code === 'INTERNAL_ERROR') err.rpc_code = 'INTERNAL_ERROR';
-        return err;
-    }
 
      _get_account_config_path(account_id) {
         return get_config_file_path(this.accounts_dir, account_id);

@@ -107,16 +107,6 @@ class BucketSpaceFS extends BucketSpaceSimpleFS {
         }
     }
 
-    _translate_bucket_error_codes(err) {
-        if (err.rpc_code) return err;
-        if (err.code === 'ENOENT') err.rpc_code = 'NO_SUCH_BUCKET';
-        if (err.code === 'EEXIST') err.rpc_code = 'BUCKET_ALREADY_EXISTS';
-        if (err.code === 'EPERM' || err.code === 'EACCES') err.rpc_code = 'UNAUTHORIZED';
-        if (err.code === 'IO_STREAM_ITEM_TIMEOUT') err.rpc_code = 'IO_STREAM_ITEM_TIMEOUT';
-        if (err.code === 'INTERNAL_ERROR') err.rpc_code = 'INTERNAL_ERROR';
-        return err;
-    }
-
     async read_account_by_access_key({ access_key }) {
         try {
             if (!access_key) throw new Error('no access key');

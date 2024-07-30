@@ -71,7 +71,8 @@ noobaa-cli account add --name <root_account_name> --uid <uid> --gid <gid> [--use
 - `name` (Required)
     - Type: String
     - Description: Specifies the name of the root account.
-    If creating an IAM account, specify the name of the new IAM account with `--iam_name` param.
+    If creating an IAM account, specify the name of the new IAM account with `--iam_name` param in 
+    addition to `--name` param which is the root account that owns this IAM account.
 
 - `iam_name`
     - Type: String
@@ -213,11 +214,11 @@ noobaa-cli account status --name <root_account_name> [--iam_name][--access_key][
 #### Flags -
 - `name` (Required)
     - Type: String
-    - Description: Specifies the name of the account.
+    - Description: Specifies the name of the root account.
 
 - `iam_name`
     - Type: String
-    - Description: If updating an IAM account, specifies the name of the IAM account.
+    - Description: If requesting an IAM account, specifies the name of the IAM account (owned by root account).
 
 - `access_key`
     - Type: String
@@ -283,7 +284,8 @@ noobaa-cli account delete --name <root_account_name> [--iam_name][--anonymous]
 - `name` (Required)
     - Type: String
     - Description: If deleting a root account, specifies the name of the account to be deleted.
-    If deleting an IAM account, specifies the name of the root account the IAM account belongs to.
+    If deleting an IAM account, specify the name of the IAM account to be deleted in addition
+    to `--name` param which is the root account that owns this IAM account.
 
 - `iam_name`
     - Type: String
