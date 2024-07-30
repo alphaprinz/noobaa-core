@@ -365,7 +365,8 @@ class AccountSpaceFS {
             const access_key_id = params.access_key;
             this._check_if_requesting_account_is_root_account_or_user_om_himself(action,
                 requesting_account, params.username);
-            const username = params.username ?? requesting_account.name; // username is not required
+            let username = params.username ?? requesting_account.name; // username is not required
+            username = username instanceof SensitiveString ? username.unwrap() : username;
             const requested_account_path = get_symlink_config_file_path(this.access_keys_dir, params.access_key);
             await this._check_if_account_exists_by_access_key_symlink(action, requested_account_path, access_key_id);
             const requested_account = await this._get_account_decrypted_data_optional(requested_account_path, true);
@@ -417,7 +418,8 @@ class AccountSpaceFS {
             const access_key_id = params.access_key;
             this._check_if_requesting_account_is_root_account_or_user_om_himself(action,
                 requesting_account, params.username);
-            const username = params.username ?? requesting_account.name; // username is not required
+            let username = params.username ?? requesting_account.name; // username is not required
+            username = username instanceof SensitiveString ? username.unwrap() : username;
             const requested_account_path = get_symlink_config_file_path(this.access_keys_dir, access_key_id);
             await this._check_if_account_exists_by_access_key_symlink(action, requested_account_path, access_key_id);
             const requested_account = await this._get_account_decrypted_data_optional(requested_account_path, true);
