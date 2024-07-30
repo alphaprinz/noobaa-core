@@ -2,12 +2,12 @@
 'use strict';
 
 const minimist = require('minimist');
-const {statSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, symlinkSync, rmSync, writeFileSync} = require('fs');
+const {statSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, symlinkSync, rmSync} = require('fs');
 const {join} = require('path');
-const { CONFIG_SUBDIRS } = require('../manage_nsfs/manage_nsfs_constants');
-const config = require('../../config');
+const { CONFIG_SUBDIRS } = require('../../../manage_nsfs/manage_nsfs_constants');
+const config = require('../../../../config');
 
-const dbg = require('../util/debug_module')(__filename);
+const dbg = require('../../../util/debug_module')(__filename);
 
 const account_id_to_name = new Map();
 
@@ -113,27 +113,6 @@ function map_account_id_to_name(dir_ent) {
     return 0;
 }
 
-function handle_bucket_file(dir_ent) {
-    const filename = join(dir_ent.parentPath, dir_ent.name);
-    if (!filename.endsWith(".json")) {
-        dbg.warn("File in bucket dir is not a json file. Filename = ", filename);
-        return 2;
-    }
-
-    let bucket_str = readFileSync(filename);
-    const bucket = JSON.parse(bucket_str);
-
-    bucket.system_owner = bucket.owner_account;
-    delete bucket.bucket_owner;
-
-    dbg.log("Updating bucket ", filename);
-    rmSync(filename);
-    bucket_str = JSON.stringify(bucket);
-    writeFileSync(filename, bucket_str);
-
-    return 0;
-}
-
 function run({conf_path}) {
 
     conf_path = conf_path || config.NSFS_NC_CONF_DIR;
@@ -173,15 +152,6 @@ function run({conf_path}) {
     //upgrade accounts
     for (const account_file of account_files) {
         const res = handle_account_file(account_file, conf_path);
-        if (res !== 0) {
-            return res;
-        }
-    }
-
-    //upgrade buckets
-    const bucket_files = readdirSync(bucket_dir, {withFileTypes: true});
-    for (const bucket_file of bucket_files) {
-        const res = handle_bucket_file(bucket_file);
         if (res !== 0) {
             return res;
         }
