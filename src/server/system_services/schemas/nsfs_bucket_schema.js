@@ -32,11 +32,6 @@ module.exports = {
         system_owner: {
             type: 'string',
         },
-        // bucket_owner is the account name
-        // deprecated - can become out-of-sync when owner account's name is changed
-        bucket_owner: {
-            type: 'string',
-        },
         tag: {
             $ref: 'common_api#/definitions/tagging',
         },
