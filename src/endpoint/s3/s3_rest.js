@@ -230,23 +230,21 @@ async function authorize_request_policy(req) {
 
     const account = req.object_sdk.requesting_account;
     const account_identifier_name = req.object_sdk.nsfs_config_root ? account.name.unwrap() : account.email.unwrap();
+    const account_identifier_id = req.object_sdk.nsfs_config_root ? account._id : undefined;
     //In old buckets (until 5.17), system_owner is account name (sensitive string).
     //In new buckets (since 5.18), system_owner is account id (string).
     const system_owner_equatable = system_owner.unwrap ? system_owner.unwrap() : system_owner;
     const is_system_owner =
-        //name check is only for root accounts,
-        //check if account has owner to verify account is not iam account
-        (account.owner && account_identifier_name === system_owner_equatable) ||
-        (account._id === system_owner_equatable);
+        (account_identifier_name === system_owner_equatable) ||
+        (account_identifier_id && account_identifier_id === system_owner_equatable);
 
     // @TODO: System owner as a construct should be removed - Temporary
     if (is_system_owner) return;
 
     const is_owner = (function() {
         if (account.bucket_claim_owner && account.bucket_claim_owner.unwrap() === req.params.bucket) return true;
-        if (owner_account && account._id === owner_account.id) return true;
-        //name check - only for root accounts
-        if (!account.owner && account_identifier_name === bucket_owner.unwrap()) return true;
+        if (req.object_sdk.nsfs_config_root && account._id === owner_account.id) return true; // NC NSFS case
+        if (!req.object_sdk.nsfs_config_root && account_identifier_name === bucket_owner.unwrap()) return true;
         return false;
     }());
 
@@ -262,12 +260,12 @@ async function authorize_request_policy(req) {
     let permission;
     //for backwards compatibility, in nsfs, we allow principal to be either
     //account name or account id.
-    if (account._id) {
+    if (account_identifier_id) {
         permission = await s3_bucket_policy_utils.has_bucket_policy_permission(
-            s3_policy, account._id, method, arn_path, req);
+            s3_policy, account_identifier_id, method, arn_path, req);
     }
 
-    if (!account._id || permission === "IMPLICIT_DENY") {
+    if (!account_identifier_id || permission === "IMPLICIT_DENY") {
         permission = await s3_bucket_policy_utils.has_bucket_policy_permission(
             s3_policy, account_identifier_name, method, arn_path, req);
     }
