@@ -162,7 +162,7 @@ class AccountSpaceFS {
             if (is_username_update) {
                 dbg.log1(`AccountSpaceFS.${action} username was updated, is_username_update`,
                     is_username_update);
-                await this._update_account_config_new_username(action, requested_account._id,
+                await this._update_account_config_new_username(action, requested_account,
                     params.username, params.new_username, requesting_account);
                 requested_account.name = params.new_username;
             }
@@ -848,12 +848,26 @@ class AccountSpaceFS {
         await nb_native().fs.symlink(this.fs_context, account_config_relative_path, symlink_path);
     }
 
-    async _update_account_config_new_username(action, user_id, old_username, new_username, requesting_account) {
-        const root_account_name = await this._get_root_account_name(requesting_account);
+    async _update_account_config_new_username(action, requested_acocunt, old_username, new_username, requesting_account) {
+        let root_account_name;
+        if (requesting_account.iam_operate_on_root_account) {
+            //if root manager requested to change the name, the requested account is the
+            //root account being updated.
+            root_account_name = old_username;
+        }
+        else{
+            root_account_name = await this._get_root_account_name(requesting_account);
+        }
         await this._check_username_already_exists(action, new_username, root_account_name);
         const root_account_old_name = get_symlink_config_file_path(this.root_accounts_dir, old_username, root_account_name);
         await nb_native().fs.unlink(this.fs_context, root_account_old_name);
-        await this._symlink_to_account(user_id, this.root_accounts_dir, new_username, root_account_name);
+        await this._symlink_to_account(requested_acocunt._id, this.root_accounts_dir, new_username, root_account_name);
+        //root accounts need to change their root_accounts/ directory name
+        if (this._check_root_account(requested_acocunt)) {
+            await nb_native().fs.rename(this.fs_context,
+                path.join(this.root_accounts_dir, root_account_name),
+                path.join(this.root_accounts_dir, new_username));
+        }
     }
 
     _check_root_account_or_user(requesting_account, username) {
