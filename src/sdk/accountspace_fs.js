@@ -854,8 +854,7 @@ class AccountSpaceFS {
             //if root manager requested to change the name, the requested account is the
             //root account being updated.
             root_account_name = old_username;
-        }
-        else{
+        } else {
             root_account_name = await this._get_root_account_name(requesting_account);
         }
         await this._check_username_already_exists(action, new_username, root_account_name);
