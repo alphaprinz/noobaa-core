@@ -1290,6 +1290,7 @@ describe('manage nsfs cli account flow', () => {
             access_key: 'GIGiFAnjaaE7OKD5N7h1',
             secret_key: 'U2AYaMpU3zRDcRFWmvzgQr9MoHIAsD+31EXAMPLE',
         };
+        let account_id;
 
         beforeEach(async () => {
             await P.all(_.map([ CONFIG_SUBDIRS.ROOT_ACCOUNTS, CONFIG_SUBDIRS.ACCESS_KEYS, CONFIG_SUBDIRS.BUCKETS], async dir =>
@@ -1300,13 +1301,14 @@ describe('manage nsfs cli account flow', () => {
 
         beforeEach(async () => {
             // cli create account
-            const action = ACTIONS.ADD;
-            const { type, name, new_buckets_path, uid, gid } = defaults;
+            //const action = ACTIONS.ADD;
+            const { name, new_buckets_path, uid, gid } = defaults;
             const account_options = { config_root, name, new_buckets_path, uid, gid };
             await fs_utils.create_fresh_path(new_buckets_path);
             await fs_utils.file_must_exist(new_buckets_path);
             await set_path_permissions_and_owner(account_options.new_buckets_path, account_options, 0o700);
-            await exec_manage_cli(type, action, account_options);
+            //await exec_manage_cli(type, action, account_options);
+            account_id = await create_account_and_get_id(account_options);
             const config_path = path.join(config_root, CONFIG_SUBDIRS.ROOT_ACCOUNTS, name, name + '.symlink');
             await fs_utils.file_must_exist(config_path);
         });
@@ -1340,7 +1342,7 @@ describe('manage nsfs cli account flow', () => {
             // currently we don't have the ability to create 2 access keys in the noobaa-cli
             // therefore, we will mock the config as there are 2 access keys objects
             // and also create the symlink for the one that manually added
-            const account = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, name);
+            const account = await read_config_file(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_id);
             const account_with_2_access_keys_objects = _.cloneDeep(account);
             const access_key2 = 'AIGiFAnjaaE7OKD5N7hA';
             const secret_key2 = 'A2AYaMpU3zRDcRFWmvzgQr9MoHIAsD+3AEXAMPLE';
@@ -1350,7 +1352,7 @@ describe('manage nsfs cli account flow', () => {
                 creation_date: new Date().toISOString(),
                 deactivated: false,
             });
-            const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, name + '.json');
+            const account_config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_id + '.json');
             await update_config_file(DEFAULT_FS_CONFIG, CONFIG_SUBDIRS.ACCOUNTS,
                 account_config_path, JSON.stringify(account_with_2_access_keys_objects));
             const account_config_relative_path = path.join(config_root, '../' + CONFIG_SUBDIRS.ACCOUNTS + '/', name + '.json');
@@ -1363,7 +1365,7 @@ describe('manage nsfs cli account flow', () => {
             const res = await exec_manage_cli(type, action, account_options);
             const res_json = JSON.parse(res.trim());
             expect(res_json.response.code).toBe(ManageCLIResponse.AccountDeleted.code);
-            const config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, name + '.json');
+            const config_path = path.join(config_root, CONFIG_SUBDIRS.ACCOUNTS, account_id + '.json');
             await fs_utils.file_must_not_exist(config_path);
             const symlink_config_path1 = path.join(config_root, CONFIG_SUBDIRS.ACCESS_KEYS, defaults.access_key + '.symlink');
             await fs_utils.file_must_not_exist(symlink_config_path1);
@@ -2034,4 +2036,14 @@ async function create_json_account_options(path_to_json_account_options_dir, acc
     const content = JSON.stringify(account_options);
     await fs.promises.writeFile(path_to_option_json_file_name, content);
     return path_to_option_json_file_name;
+}
+
+/**
+ * Invoke cli to create an account, parses new account id from the response
+ * @param {object} account
+ */
+
+async function create_account_and_get_id(account) {
+    const res = JSON.parse(await exec_manage_cli(TYPES.ACCOUNT, ACTIONS.ADD, account));
+    return res.response.reply._id;
 }
