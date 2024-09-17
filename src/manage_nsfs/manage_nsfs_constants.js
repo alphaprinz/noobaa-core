@@ -135,7 +135,7 @@ const OPTION_TYPE = {
     expected_version: 'string',
     expected_hosts: 'string',
     custom_upgrade_scripts_dir: 'string',
-    skip_verification: 'boolean',
+    //notifications
     notifications: 'object'
 };
 
