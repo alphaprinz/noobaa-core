@@ -11,9 +11,9 @@ const os = require('os');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
-const path = require('path');
 const { get_process_fs_context } = require('./native_fs_utils');
 const nb_native = require('../util/nb_native');
+const http_utils = require('../util/http_utils');
 
 class Notificator {
 
@@ -58,10 +58,23 @@ class Notificator {
      * and will send its notifications
      */
     async process_notification_files() {
+        const seen_nodes = new Set();
         const entries = await nb_native().fs.readdir(this.fs_context, config.NOTIFICATION_LOG_DIR);
         for(const file of entries) {
+            dbg.log0("file.name = ", file.name);
             if (!file.name.endsWith('.log')) return;
-            const log = new PersistentLogger(config.NOTIFICATION_LOG_DIR, path.parse(file.name).name, { locking: 'EXCLUSIVE' });
+            //get namespace
+            const namepsace_index = file.name.indexOf(config.NOTIFICATION_LOG_NS);
+            if (namepsace_index === -1) continue;
+            const node_namespace = file.name.substring(0, namepsace_index + config.NOTIFICATION_LOG_NS.length);
+            dbg.log0('namespace = ', node_namespace);
+            if (seen_nodes.has(node_namespace)) {
+                //already handled this node name
+                continue;
+            } else {
+                seen_nodes.add(node_namespace);
+            }
+            const log = new PersistentLogger(config.NOTIFICATION_LOG_DIR, node_namespace, { locking: 'EXCLUSIVE' });
             try {
                 await log.process(async (file, failure_append) => this._notify(this.fs_context, file, failure_append));
             } catch (err) {
@@ -80,9 +93,10 @@ class Notificator {
      */
     async _notify(fs_context, log_file, failure_append) {
         const file = new LogFile(fs_context, log_file);
-        dbg.log2('sending out notificatoins from file ', log_file);
+        dbg.log0('sending out notifications from file ', log_file);
         const send_promises = [];
         await file.collect_and_process(async str => {
+            dbg.log0("collect_and_process str = ", str);
             const notif = JSON.parse(str);
             let connect = this.notif_to_connect.get(notif.meta.name);
             if (!connect) {
@@ -157,7 +171,7 @@ class HttpNotificator {
         });
     }
 
-    destroy(){
+    destroy() {
         this.agent.destroy();
     }
 }
@@ -214,16 +228,35 @@ class KafkaNotificator {
         });
     }
 
-    destroy(){
+    destroy() {
         this.connection.flush(10000);
         this.connection.disconnect();
     }
 }
 
+//replace properties starting with 'local_file'
+//with the content of the pointed file
+//(useful for loading tls certificates into http options object)
+function load_files(object) {
+    dbg.log0('load_files for obj =', object);
+    if (typeof object !== 'object') return;
+    for (const key in object) {
+        if(key.startsWith('local_file')) {
+            const new_key = key.substring('local_file_'.length);
+            const content = fs.readFileSync(object[key], 'utf-8');
+            object[new_key] = content;
+            delete object[key];
+        } else {
+            load_files(object[key]);
+        }
+    }
+    dbg.log0('load_files done new obj =', object);
+}
+
 function parse_connect_file(connect_filepath) {
     const connect = {};
     const connect_strs = fs.readFileSync(connect_filepath, 'utf-8').split(os.EOL);
-    for(const connect_str of connect_strs) {
+    for (const connect_str of connect_strs) {
         if(connect_str === '') continue;
         const kv = connect_str.split('=');
         //parse JSONs-
@@ -232,16 +265,17 @@ function parse_connect_file(connect_filepath) {
         }
         connect[kv[0]] = kv[1];
     }
+    //parse file contents (useful for tls cert files)
+    load_files(connect);
     return connect;
 }
 
 
 function get_connection(connect, promise_failure_cb) {
     switch (connect.notification_protocol.toLowerCase()) {
-        case 'http': {
-            return new HttpNotificator(connect, promise_failure_cb);
-        }
-        case 'https': {
+        case 'http':
+        case 'https':
+        {
             return new HttpNotificator(connect, promise_failure_cb);
         }
         case 'kafka': {
@@ -272,5 +306,68 @@ async function test_notifications(bucket) {
     }
 }
 
+//see https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html
+function compose_notification(req, res, bucket, notif_conf) {
+    let eTag = res.getHeader('ETag');
+    if (eTag && eTag.startsWith('\"') && eTag.endsWith('\"')) {
+        eTag = eTag.substring(2, eTag.length - 2);
+    }
+
+    const notif = {
+        eventVersion: '2.3',
+        eventSource: req.system ? req.system.name : system_store.data.systems[0]._id + ':s3',
+        eventTime: new Date().toISOString,
+        eventName: req.s3event + ':' + (req.s3_event_op || req.method),
+        userIdentity: {
+            principalId: req.object_sdk.requesting_account.name,
+        },
+        requestParameters: {
+            sourceIPAddress: http_utils.parse_client_ip(req),
+        },
+        responseElements: {
+            "x-amz-request-id": req.request_id,
+            "x-amz-id-2": req.request_id,
+        },
+        s3: {
+            s3SchemaVersion: "1.0",
+            configurationId: notif_conf.name,
+            bucket: {
+                name: bucket.name,
+                ownerIdentity: {
+                    principalId: bucket.bucket_owner.unwrap(),
+                },
+                arn: "arn:aws:s3:::" + bucket.name,
+            },
+            object: {
+                key: req.params.key,
+                size: res.getHeader('content-length'),
+                eTag,
+                versionId: res.getHeader('x-amz-version-id'),
+            },
+        }
+    };
+
+    //handle glacierEventData
+    if (res.restore_object_result) {
+        notif.glacierEventData = {
+            restoreEventData: {
+                lifecycleRestorationExpiryTime: res.restore_object_result.expires_on.toISOString(),
+                lifecycleRestoreStorageClass: res.restore_object_result.storage_class,
+            },
+        }
+    }
+
+    //handle sequencer
+    if (res.seq) {
+        notif.s3.object.sequencer = res.seq;
+    }
+
+    const records = [];
+    records.push(notif);
+    
+    return {Records: records}
+}
+
 exports.Notificator = Notificator;
 exports.test_notifications = test_notifications;
+exports.compose_notification = compose_notification;
