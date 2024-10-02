@@ -122,7 +122,7 @@ function print_usage() {
 let nsfs_config_root;
 
 class NsfsObjectSDK extends ObjectSDK {
-    constructor(fs_root, fs_config, account, versioning, config_root) {
+    constructor(fs_root, fs_config, account, versioning, config_root, nsfs_system) {
         // const rpc_client_hooks = new_rpc_client_hooks();
         // rpc_client_hooks.account.read_account_by_access_key = async ({ access_key }) => {
         //     if (access_key) {
@@ -153,6 +153,7 @@ class NsfsObjectSDK extends ObjectSDK {
         this.nsfs_account = account;
         this.nsfs_versioning = versioning;
         this.nsfs_namespaces = {};
+        this.nsfs_system = nsfs_system;
         if (!config_root) {
             this._get_bucket_namespace = bucket_name => this._simple_get_single_bucket_namespace(bucket_name);
             this.load_requesting_account = auth_req => this._simple_load_requesting_account(auth_req);
@@ -246,6 +247,7 @@ async function init_nc_system(config_root) {
 
     const hostname = os.hostname();
     // If the system data already exists, we should not create it again
+<<<<<<< HEAD
     const updated_system_json = system_data || {};
     if (updated_system_json[hostname]?.current_version && updated_system_json.config_directory) return;
     if (!updated_system_json[hostname]?.current_version) {
@@ -271,6 +273,23 @@ async function init_nc_system(config_root) {
             await config_fs.create_system_config_file(JSON.stringify(updated_system_json));
             console.log('created NC system data with version: ', pkg.version);
         }
+=======
+    if (data?.[hostname]?.current_version) return data;
+
+    try {
+        await system_data.update({
+            ...data,
+            [hostname]: {
+                current_version: pkg.version,
+                upgrade_history: {
+                    successful_upgrades: [],
+                    last_failure: undefined
+                }
+            }
+        });
+        console.log('created NSFS system data with version: ', pkg.version);
+        return data;
+>>>>>>> 06c911d8c (notifications | align with official content (also change persistent namespace for easier parsing))
     } catch (err) {
         const msg = 'failed to create/update NC system data due to - ' + err.message;
         const error = new Error(msg);
@@ -363,7 +382,8 @@ async function main(argv = minimist(process.argv.slice(2))) {
             nsfs_config_root,
         });
 
-        if (!simple_mode) await init_nc_system(nsfs_config_root);
+        let nsfs_system;
+        if (!simple_mode) nsfs_system = await init_nc_system(nsfs_config_root);
 
         const endpoint = require('../endpoint/endpoint');
         await endpoint.main({
@@ -375,7 +395,7 @@ async function main(argv = minimist(process.argv.slice(2))) {
             forks,
             nsfs_config_root,
             init_request_sdk: (req, res) => {
-                req.object_sdk = new NsfsObjectSDK(fs_root, fs_config, account, versioning, nsfs_config_root);
+                req.object_sdk = new NsfsObjectSDK(fs_root, fs_config, account, versioning, nsfs_config_root, nsfs_system);
                 req.account_sdk = new NsfsAccountSDK(fs_root, fs_config, account, nsfs_config_root);
             }
         });
