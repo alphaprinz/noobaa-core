@@ -49,6 +49,8 @@ const system_store = require('../../server/system_services/system_store').get_in
 const MDStore = require('../../server/object_services/md_store').MDStore;
 const pool_server = require('../../server/system_services/pool_server');
 const pool_ctrls = require('../../server/system_services/pool_controllers');
+const { PersistentLogger } = require('../../util/persistent_logger');
+const os = require('os');
 
 // Set the pools server pool controller factory to create pools with
 // backed by in process agents.
@@ -132,11 +134,17 @@ function setup(options = {}) {
     _.each(server_rpc.rpc._services,
         (service, srv) => api_coverage.add(srv));
 
+    const notification_logger = config.NOTIFICATION_LOG_DIR &&
+        new PersistentLogger(config.NOTIFICATION_LOG_DIR, process.env.NODE_NAME || os.hostname()+ '_' + config.NOTIFICATION_LOG_NS, {
+            locking: 'SHARED',
+            poll_interval: config.NSFS_GLACIER_LOGS_POLL_INTERVAL,
+        });
+
     const object_io = new ObjectIO();
     const endpoint_request_handler = endpoint.create_endpoint_handler(
-        endpoint.create_init_request_sdk(server_rpc.rpc, rpc_client, object_io), [], false);
+        endpoint.create_init_request_sdk(server_rpc.rpc, rpc_client, object_io), [], false, undefined, notification_logger);
     const endpoint_request_handler_sts = endpoint.create_endpoint_handler(
-        endpoint.create_init_request_sdk(server_rpc.rpc, rpc_client, object_io), [], true);
+        endpoint.create_init_request_sdk(server_rpc.rpc, rpc_client, object_io), [], true, undefined, notification_logger);
 
     async function announce(msg) {
         if (process.env.SUPPRESS_LOGS) return;
