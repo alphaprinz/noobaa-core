@@ -10,6 +10,8 @@ const server_rpc = require('../server_rpc');
 const system_store = require('../system_services/system_store').get_instance();
 const auth_server = require('../common_services/auth_server');
 const config = require('../../../config');
+const { get_notification_logger, check_notif_relevant,
+    OP_TO_EVENT, compose_notification_lifecycle } = require('../../util/notifications_util');
 
 function get_expiration_timestamp(expiration) {
     if (!expiration) {
@@ -54,6 +56,44 @@ async function handle_bucket_rule(system, rule, j, bucket) {
             role: 'admin'
         })
     });
+
+    if (config.NOTIFICATION_LOG_DIR && bucket.notifications) {
+
+        const writes = [];
+
+        for (const deleted_obj of res) {
+
+            for (const notif of bucket.notifications) {
+
+                if (!check_notif_relevant(notif, {
+                    op_name: OP_TO_EVENT.lifecycle_delete,
+                    s3_event_method: deleted_obj.created_delete_marker ? 'DeleteMarkerCreated' : 'Delete',
+                })) {
+                    //remember that this deletion needs a notif for this specific notification conf
+                    writes.push({notif, deleted_obj});
+                }
+            }
+        }
+
+        //if any notifications are needed, write them in notification log file
+        //(otherwise don't do any unnecessary filesystem actions)
+        if (writes.length > 0) {
+            let logger;
+            const promises = [];
+            try {
+                logger = get_notification_logger('SHARED');
+                for (const write of writes) {
+                    promises.push(new Promise((res) => {
+                        logger.append(compose_notification_lifecycle(write.deleted_obj, write.notif)).then(res);
+                    }));
+                }
+            }
+            finally {
+                if (logger) logger.close();
+            }
+        }
+
+    }
 
     bucket.lifecycle_configuration_rules[j].last_sync = Date.now();
     if (res.num_objects_deleted >= config.LIFECYCLE_BATCH_SIZE) should_rerun = true;

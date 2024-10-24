@@ -22,6 +22,7 @@ const OP_TO_EVENT = Object.freeze({
     put_object_acl: { name: 'ObjectAcl' },
     put_object_tagging: { name: 'ObjectTagging' },
     delete_object_tagging: { name: 'ObjectTagging' },
+    lifecycle_delete: { name: 'LifecycleExpiration' },
 });
 
 class Notificator {
@@ -86,7 +87,7 @@ class Notificator {
                 seen_nodes.add(node_namespace);
             }
             dbg.log1("process_notification_files node_namespace =", node_namespace, ", file =", entry.name);
-            const log = new PersistentLogger(config.NOTIFICATION_LOG_DIR, node_namespace, { locking: 'EXCLUSIVE' });
+            const log = get_notification_logger('EXCLUSIVE', node_namespace);
             try {
                 await log.process(async (file, failure_append) => await this._notify(this.fs_context, file, failure_append));
             } catch (err) {
@@ -311,7 +312,7 @@ async function test_notifications(bucket) {
 }
 
 //see https://docs.aws.amazon.com/AmazonS3/latest/userguide/notification-content-structure.html
-function compose_notification(req, res, bucket, notif_conf) {
+function compose_notification_req(req, res, bucket, notif_conf) {
     let eTag = res.getHeader('ETag');
     //eslint-disable-next-line
     if (eTag && eTag.startsWith('\"') && eTag.endsWith('\"')) {
@@ -370,17 +371,28 @@ function compose_notification(req, res, bucket, notif_conf) {
         notif.s3.object.sequencer = res.seq;
     }
 
-    const records = [];
-    records.push(notif);
-
-    return {Records: records};
+    return compose_meta(notif, notif_conf);
 }
 
+function compose_notification_lifecycle(deleted_obj, notif_conf) {
 
+    return compose_meta(record, notif_conf);
+
+}
+
+function compose_meta(record, notif_conf) {
+    return {
+        meta: {
+            connect: notif_conf.Connect,
+            name: notif_conf.name
+        },
+        Records: [record]
+    };
+}
 
 function _get_system_name(req) {
 
-    if (req.object_sdk.nsfs_config_root) {
+    if (req && req.object_sdk && req.object_sdk.nsfs_system) {
         const name = Object.keys(req.object_sdk.nsfs_system)[0];
         return name;
     } else {
@@ -423,7 +435,26 @@ function check_notif_relevant(notif, req) {
     return false;
 }
 
+/**
+ *
+ * @param {"SHARED" | "EXCLUSIVE"} locking counterintuitively, either 'SHARED' for writing or 'EXCLUSIVE' for reading
+ */
+function get_notification_logger(locking, namespace, poll_interval) {
+    if (!namespace) {
+        const node_name = process.env.NODE_NAME || os.hostname();
+        namespace = node_name + '_' + config.NOTIFICATION_LOG_NS;
+    }
+
+    return new PersistentLogger(config.NOTIFICATION_LOG_DIR, namespace, {
+        locking,
+        poll_interval,
+    });
+}
+
 exports.Notificator = Notificator;
 exports.test_notifications = test_notifications;
-exports.compose_notification = compose_notification;
+exports.compose_notification_req = compose_notification_req;
+exports.compose_notification_lifecycle = compose_notification_lifecycle;
 exports.check_notif_relevant = check_notif_relevant;
+exports.get_notification_logger = get_notification_logger;
+exports.OP_TO_EVENT = OP_TO_EVENT;
