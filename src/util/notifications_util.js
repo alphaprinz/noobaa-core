@@ -260,18 +260,8 @@ function load_files(object) {
 }
 
 function parse_connect_file(connect_filepath) {
-    const connect = {};
-    const connect_strs = fs.readFileSync(connect_filepath, 'utf-8').split(os.EOL);
-    for (const connect_str of connect_strs) {
-        if (connect_str === '') continue;
-        const kv = connect_str.split('=');
-        //parse JSONs-
-        if (kv[0].endsWith('object')) {
-            kv[1] = JSON.parse(kv[1]);
-        }
-        connect[kv[0]] = kv[1];
-    }
-    //parse file contents (useful for tls cert files)
+    const connect_str = fs.readFileSync(connect_filepath, 'utf-8');
+    const connect = JSON.parse(connect_str);
     load_files(connect);
     return connect;
 }
