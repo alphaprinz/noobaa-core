@@ -44,6 +44,35 @@ const COMPARISON_OPS = [
     '$lte',
 ];
 
+const CONNECT_PARAMS_SOURCE = {
+    USER: {
+        path: "/etc/internal-db-secret/user",
+        env: 'POSTGRES_USER',
+        default : 'postgres',
+    },
+    PASSWORD: {
+        path: "/etc/internal-db-secret/password",
+        env: 'POSTGRES_PASSWORD',
+        default : 'noobaa',
+    },
+};
+
+//get a connect param by this order:
+//1. written in file (assumed to be mounted db secret by operator)
+//2. env
+//3. default
+function get_connect_param(name){
+    const source = CONNECT_PARAMS_SOURCE[name];
+    if (fs.existsSync(source.path)) {
+        return fs.readFileSync(source.path).toString('utf8');
+    }
+    const env = process.env[source.env];
+    if (env) {
+        return env;
+    }
+    return source.default;
+}
+
 
 // temporary solution for encode\decode
 // perfrom encode\decode json for every query to\from the DB
@@ -1476,8 +1505,8 @@ class PostgresClient extends EventEmitter {
             // TODO: This need to move to another function
             this.new_pool_params = {
                 host: process.env.POSTGRES_HOST || '127.0.0.1',
-                user: process.env.POSTGRES_USER || 'postgres',
-                password: process.env.POSTGRES_PASSWORD || 'noobaa',
+                user: get_connect_param('USER'),
+                password: get_connect_param('PASSWORD'),
                 database: process.env.POSTGRES_DBNAME || 'nbcore',
                 port: postgres_port,
                 ...params,
