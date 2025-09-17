@@ -1121,7 +1121,8 @@ class MDStore {
             projection: {
                 _id: 1,
                 deleted: 1
-            }
+            },
+            preffered_pool: 'read_only'
         });
         return db_client.instance().uniq_ids(objects, '_id');
     }
@@ -1772,7 +1773,8 @@ class MDStore {
                 projection: {
                     _id: 1,
                     deleted: 1
-                }
+                },
+                preffered_pool: 'read_only'
             })
             .then(objects => db_client.instance().uniq_ids(objects, '_id'));
     }
@@ -1780,6 +1782,8 @@ class MDStore {
     has_any_blocks_for_chunk(chunk_id) {
         return this._blocks.findOne({
                 chunk: { $eq: chunk_id, $exists: true },
+            }, {
+                preffered_pool: 'read_only'
             })
             .then(obj => Boolean(obj));
     }
@@ -1787,6 +1791,8 @@ class MDStore {
     has_any_parts_for_chunk(chunk_id) {
         return this._parts.findOne({
                 chunk: { $eq: chunk_id, $exists: true },
+            }, {
+                preffered_pool: 'read_only'
             })
             .then(obj => Boolean(obj));
     }
@@ -2028,7 +2034,8 @@ class MDStore {
                 projection: {
                     _id: 1,
                     deleted: 1
-                }
+                },
+                preffered_pool: 'read_only'
             })
             .then(objects => db_client.instance().uniq_ids(objects, '_id'));
     }
