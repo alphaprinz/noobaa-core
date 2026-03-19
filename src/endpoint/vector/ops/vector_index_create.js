@@ -14,12 +14,14 @@ async function post_create_index(req, res) {
     const vector_bucket_name = req.body.vectorBucketName;
     const dimension = req.body.dimension;
     const distance_metric = req.body.distanceMetric;
+    const metadata_configuration = req.body.metadataConfiguration;
 
     await req.vector_sdk.create_vector_index({
         vector_index_name,
         vector_bucket_name,
         dimension,
-        distance_metric
+        distance_metric,
+        metadata_configuration
     });
 }
 
