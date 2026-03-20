@@ -13,9 +13,12 @@ async function post_list_vectors(req, res) {
     const list = await req.vector_sdk.list_vectors({
         vector_bucket_name: req.body.vectorBucketName,
         vector_index_name: req.body.indexName,
-        max_results: req.body.maxResults,
+        max_results: req.body.maxResults || 500,
         return_data: req.body.returnData,
         return_metadata: req.body.returnMetadata,
+        segment_count: req.body.segmentCount,
+        segment_index: req.body.segmentIndex,
+        next_token: req.body.nextToken,
     });
 
     dbg.log0("post_list_vectors list =", list);
