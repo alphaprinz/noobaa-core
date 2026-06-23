@@ -280,6 +280,8 @@ class Glacier {
                 if (run_options.on_staged) await run_options.on_staged();
             });
 
+
+            dbg.log0("AAAAAAAAAAAAAA should_proceed =", should_proceed);
             if (!should_proceed) return;
             await process_glacier_logs(staged_log_ns, process_primary_fn);
         };
@@ -626,6 +628,7 @@ class Glacier {
     static getBackend(typ = config.NSFS_GLACIER_BACKEND) {
         switch (typ) {
             case 'TAPECLOUD': return new (require('./glacier_tapecloud').TapeCloudGlacier)();
+            case 'AFM': return new (require('./glacier_afm').AfmGlacier)();
             default:
                 throw new Error('invalid backend type provided');
         }

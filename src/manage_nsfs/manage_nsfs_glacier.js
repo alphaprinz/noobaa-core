@@ -86,6 +86,7 @@ async function process_reclaim() {
  * @returns {Promise<boolean>}
  */
 async function time_exceeded(fs_context, interval, timestamp_file) {
+    console.log("AAAAAAAAAAAAAAAAAAA time_exceeded");
     try {
         const { data } = await nb_native().fs.readFile(fs_context, path.join(config.NSFS_GLACIER_LOGS_DIR, timestamp_file));
         const lastrun = new Date(data.toString());
@@ -93,7 +94,10 @@ async function time_exceeded(fs_context, interval, timestamp_file) {
         if (lastrun.getTime() + interval < Date.now()) return true;
     } catch (error) {
         console.error('failed to read last run timestamp:', error, 'timestamp_file:', timestamp_file);
-        if (error.code === 'ENOENT') return true;
+        if (error.code === 'ENOENT') {
+            console.log("AAAAAAAAAAAAAAAAAAA time_exceeded true"); 
+            return true;
+        }
 
         throw error;
     }
