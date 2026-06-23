@@ -899,14 +899,14 @@ config.NSFS_ENABLE_DYNAMIC_SUPPLEMENTAL_GROUPS = false;
 // Cache expiry for supplemental groups by uid, default 1 minute
 config.NSFS_SUPPLEMENTAL_GROUPS_CACHE_EXPIRY_MS = 1 * 60 * 1000;
 
-config.NSFS_GLACIER_LOGS_DIR = '/var/run/noobaa-nsfs/wal';
+config.NSFS_GLACIER_LOGS_DIR = '/tmp/wal';
 config.NSFS_GLACIER_LOGS_POLL_INTERVAL = 10 * 1000;
 
 // NSFS_GLACIER_ENABLED can override internal autodetection and will force
 // the use of restore for all objects.
-config.NSFS_GLACIER_ENABLED = false;
-config.NSFS_GLACIER_LOGS_ENABLED = false;
-config.NSFS_GLACIER_BACKEND = 'TAPECLOUD';
+config.NSFS_GLACIER_ENABLED = true;
+config.NSFS_GLACIER_LOGS_ENABLED = true;
+config.NSFS_GLACIER_BACKEND = 'AFM';
 
 // TAPECLOUD Glacier backend specific configs
 config.NSFS_GLACIER_TAPECLOUD_BIN_DIR = '/opt/ibm/tapecloud/bin';

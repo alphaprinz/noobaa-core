@@ -143,7 +143,7 @@ class Glacier {
     /**
      * stage_restore must take a log file (from `Glacier.RESTORE_STAGE_WAL_NAME`)
      * which will have newline seperated entries of filenames which needs to be
-     * migrated to GLACIER and should stage the files for migration.
+     * restored from GLACIER.
      * 
      * The function should return false if it needs the log file to be
      * preserved.
@@ -192,7 +192,7 @@ class Glacier {
     }
 
     /**
-     * reclaim cleans up inindexed items in the underlying
+     * reclaim cleans up indexed items in the underlying
      * glacier storage
      * 
      * NOTE: This needs to be implemented by each backend.
@@ -280,6 +280,8 @@ class Glacier {
                 if (run_options.on_staged) await run_options.on_staged();
             });
 
+
+            dbg.log0("AAAAAAAAAAAAAA should_proceed =", should_proceed);
             if (!should_proceed) return;
             await process_glacier_logs(staged_log_ns, process_primary_fn);
         };
@@ -626,6 +628,7 @@ class Glacier {
     static getBackend(typ = config.NSFS_GLACIER_BACKEND) {
         switch (typ) {
             case 'TAPECLOUD': return new (require('./glacier_tapecloud').TapeCloudGlacier)();
+            case 'AFM': return new (require('./glacier_afm').AfmGlacier)();
             default:
                 throw new Error('invalid backend type provided');
         }
